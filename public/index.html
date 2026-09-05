@@ -347,6 +347,14 @@ body{
     display:block;
 }
 
+.browser-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.browser-toolbar input{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25);color:var(--text)}
+.browser-frame{width:100%;height:calc(100vh - 230px);min-height:420px;border:1px solid var(--line);border-radius:18px;background:#0b1020}
+.browser-widgets{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.browser-widget{padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.vpn-state{color:var(--muted);font-size:12px;margin-top:6px}
+@media(max-width:700px){.browser-widgets{grid-template-columns:1fr}.browser-toolbar{flex-wrap:wrap}}
+
 /* CARDS */
 
 .cards{
@@ -770,6 +778,7 @@ J'ai déjà un compte
 <button onclick="goTo('groups',this)">👥 Groupes</button>
 <button onclick="goTo('support',this)">🛟 Support <span class="badge" id="supportBadge" style="display:none">0</span></button>
 <button onclick="goTo('admin',this)" id="adminNav" style="display:none">🛡️ Admin</button>
+<button onclick="goTo('browser',this)">🌐 NOVA Browser</button>
 <button onclick="goTo('settings',this)">⚙️ Réglages</button>
 
 </nav>
@@ -919,7 +928,7 @@ onkeydown="messageKey(event)"
 
 <div class="card">
 
-<h2>📞 Appels</h2>
+<h2>📞 Appels NOVA</h2>
 
 <br>
 
@@ -928,6 +937,11 @@ Les appels vocaux utilisent WebRTC pour transmettre
 l'audio directement entre les navigateurs lorsque la
 connexion le permet.
 </p>
+
+<div style="margin-top:20px">
+    <h3 style="margin-bottom:10px">Contacts disponibles pour un appel :</h3>
+    <div id="callQuickList" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
 
 </div>
 
@@ -939,14 +953,17 @@ connexion le permet.
 
 <div class="card">
 
-<h2>👥 Contacts</h2>
+<h2>👥 Contacts NOVA</h2>
 
-<br>
-
-<p style="color:var(--muted)">
-Utilise la recherche dans Messages pour trouver
-un utilisateur NOVA.
+<p style="color:var(--muted);margin:8px 0 16px">
+Membres du réseau NOVA. Clique pour ouvrir la messagerie ou lancer un appel.
 </p>
+
+<button class="btn" style="max-width:200px" onclick="loadContactsDirectory()">Actualiser les contacts</button>
+
+<div id="contactsDirectory" style="margin-top:18px"></div>
+
+</div>
 
 </div>
 
@@ -993,6 +1010,24 @@ un utilisateur NOVA.
 </div>
 </div>
 
+<div class="page" id="browser">
+<div class="card">
+    <h2>🌐 NOVA Browser</h2>
+    <p style="color:var(--muted);margin:8px 0 16px">Espace web intégré avec widgets rapides. Le bouton VPN est un indicateur local et n'établit pas de tunnel réseau.</p>
+    <div class="browser-widgets">
+        <div class="browser-widget"><strong>Horloge</strong><div id="browserClock" class="number">--:--</div></div>
+        <div class="browser-widget"><strong>VPN NOVA</strong><div id="browserVpnState" class="vpn-state">Désactivé · aucun VPN réel configuré</div><button class="btn secondary" style="margin-top:10px" onclick="toggleBrowserVpn()">Activer l'indicateur</button></div>
+        <div class="browser-widget"><strong>Raccourcis</strong><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn secondary" onclick="openBrowserUrl('https://www.google.com')">Google</button><button class="btn secondary" onclick="openBrowserUrl('https://github.com')">GitHub</button></div></div>
+    </div>
+    <div class="browser-toolbar">
+        <button class="icon-btn" onclick="browserBack()" aria-label="Retour">←</button>
+        <button class="icon-btn" onclick="browserForward()" aria-label="Avancer">→</button>
+        <button class="icon-btn" onclick="browserReload()" aria-label="Actualiser">↻</button>
+        <input id="browserAddress" value="https://anormadaise2-ops.github.io/NOVA/" aria-label="Adresse web" onkeydown="if(event.key==='Enter') openBrowserUrl(this.value)">
+        <button class="btn" onclick="openBrowserUrl($('browserAddress').value)">Ouvrir</button>
+    </div>
+    <iframe id="browserFrame" class="browser-frame" title="Navigateur NOVA" sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"></iframe>
+</div>
 </div>
 
 <!-- SETTINGS -->
@@ -1012,6 +1047,7 @@ Se déconnecter
 <hr style="border-color:var(--line);margin:24px 0">
 <h3>Photo de profil</h3>
 <p style="color:var(--muted);margin:8px 0 12px">JPG, PNG, WEBP ou GIF, 2 Mo maximum.</p>
+<div id="settingsAvatarPreview" class="avatar" style="width:64px;height:64px;margin-bottom:12px;font-size:24px"></div>
 <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/gif" onchange="uploadAvatar(event)">
 
 </div>
@@ -1075,12 +1111,24 @@ const NOVA_API_ORIGIN = "__NOVA_API_ORIGIN__";
 const NOVA_API_BASE = NOVA_API_ORIGIN.startsWith("__")
     ? window.location.origin
     : NOVA_API_ORIGIN.replace(/\/+$/, "");
+
+function resolveMediaUrl(url) {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+    return `${NOVA_API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 const nativeFetch = window.fetch.bind(window);
-window.fetch = (input, init) => {
-    if (typeof input === "string" && input.startsWith("/api/")) {
+window.fetch = (input, init = {}) => {
+    if (typeof input === "string" && (input.startsWith("/api/") || input.startsWith("/voices/") || input.startsWith("/avatars/"))) {
         input = `${NOVA_API_BASE}${input}`;
-        init = { credentials: "include", ...(init || {}) };
     }
+    init = { credentials: "include", ...init };
+    /*
+    if (token && !headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${token}`);
+    }
+    */
     return nativeFetch(input, init);
 };
 
@@ -1088,37 +1136,27 @@ window.fetch = (input, init) => {
    NOVA CLIENT
 ===================================================== */
 
-let currentUser =
-    null;
-
+let currentUser = null;
 let socket = null;
-
 let selectedUser = null;
 let selectedGroup = null;
-
 let allMessages = [];
-
 let peerConnection = null;
-
 let localStream = null;
-
 let currentCallUser = null;
-
 let isMuted = false;
-
 let mediaRecorder = null;
-
 let recordedChunks = [];
-
 let recording = false;
 let pendingOffer = null;
+let pendingIceCandidates = [];
 let callStartedAt = null;
 let callTimer = null;
 let ringtoneContext = null;
 let ringtoneTimer = null;
 let supportTickets = [];
 let supportArticles = [];
-
+let toastTimer = null;
 
 /* =====================================================
    HELPERS
@@ -1129,14 +1167,11 @@ function $(id){
 }
 
 function showToast(text){
-
     const toast = $("toast");
-
     toast.textContent = text;
-
     toast.classList.add("show");
-
-    setTimeout(()=>{
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{
         toast.classList.remove("show");
     },2500);
 }
@@ -1211,6 +1246,7 @@ async function login(){
         }
 
         currentUser = data.user;
+        if(data.token) localStorage.setItem("nova_token", data.token);
 
         enterApp();
 
@@ -1293,6 +1329,7 @@ async function register(){
         }
 
         currentUser = data.user;
+        if(data.token) localStorage.setItem("nova_token", data.token);
 
         showToast("Compte NOVA créé.");
 
@@ -1325,7 +1362,12 @@ async function enterApp(){
 
     $("miniAvatar").textContent =
         initials(currentUser.username);
-    if (currentUser.avatar) setAvatarImage($("miniAvatar"), currentUser.avatar);
+    if (currentUser.avatar) {
+        setAvatarImage($("miniAvatar"), currentUser.avatar);
+        setAvatarImage($("settingsAvatarPreview"), currentUser.avatar);
+    } else if ($("settingsAvatarPreview")) {
+        $("settingsAvatarPreview").textContent = initials(currentUser.username);
+    }
 
     $("homeUser").textContent =
         currentUser.username;
@@ -1337,6 +1379,7 @@ async function enterApp(){
     await loadMessages();
     await loadSupport();
     await loadGroups();
+    await loadContactsDirectory();
 
 }
 
@@ -1353,10 +1396,13 @@ function connectWebSocket(){
             ? "wss:"
             : "ws:";
 
+    const token = localStorage.getItem("nova_token");
+    const wsUrl = token
+        ? `${protocol}//${apiUrl.host}?token=${encodeURIComponent(token)}`
+        : `${protocol}//${apiUrl.host}`;
+
     socket =
-        new WebSocket(
-            `${protocol}//${apiUrl.host}`
-        );
+        new WebSocket(wsUrl);
 
     socket.addEventListener("open",()=>{
 
@@ -1369,7 +1415,9 @@ function connectWebSocket(){
 
             type:"identify",
 
-            username:currentUser.username
+            username:currentUser.username,
+
+            token: localStorage.getItem("nova_token") || undefined
 
         }));
 
@@ -1426,7 +1474,9 @@ function handleSocketMessage(data){
 
     if(data.type === "message" || data.type === "voice-message"){
 
-        allMessages.push(data.message);
+        if(!allMessages.some(m => m.id === data.message.id)){
+            allMessages.push(data.message);
+        }
 
         if(
             selectedUser &&
@@ -1440,15 +1490,23 @@ function handleSocketMessage(data){
 
         }
 
-        if(data.type === "group-message"){
-            allMessages.push(data.message);
-            if(selectedGroup && data.message.groupId === selectedGroup.id) renderMessages();
-            return;
-        }
-
         $("homeMessages").textContent =
             allMessages.length;
 
+        renderContacts();
+
+        return;
+    }
+
+    if(data.type === "group-message"){
+        if(!allMessages.some(m => m.id === data.message.id)){
+            allMessages.push(data.message);
+        }
+        if(selectedGroup && data.message.groupId === selectedGroup.id){
+            renderMessages();
+        }
+        $("homeMessages").textContent =
+            allMessages.length;
         return;
     }
 
@@ -1490,6 +1548,7 @@ function handleSocketMessage(data){
         $("supportBadge").style.display = "inline-block";
         $("supportBadge").textContent = "!";
         if($("support").classList.contains("active")) loadSupport();
+        if($("admin").classList.contains("active")) loadAdminTickets();
         showToast("Nouvelle notification Support");
     }
 
@@ -1515,7 +1574,13 @@ function updatePresence(users){
 
     }
 
+    if(currentCallUser && !onlineUsers.includes(currentCallUser)){
+        showToast(`${currentCallUser} s'est déconnecté.`);
+        closeCall();
+    }
+
     renderContacts();
+    renderCallQuickList();
 
 }
 
@@ -1595,6 +1660,11 @@ async function searchUser(event){
         return;
     }
 
+    if(currentUser && username.toLowerCase() === currentUser.username.toLowerCase()){
+        showToast("C'est ton propre pseudo.");
+        return;
+    }
+
     try{
 
         const response =
@@ -1660,131 +1730,240 @@ async function loadMessages(){
 
         }
 
-        async function supportRequest(url, options){
-            const response = await fetch(url, options);
-            const data = await response.json();
-            if(!response.ok) throw new Error(data.error || "Support indisponible.");
-            return data;
-        }
-
-        async function loadSupport(){
-            try{
-                const [faq, tickets] = await Promise.all([
-                    supportRequest("/api/support/faq"),
-                    supportRequest("/api/support/tickets")
-                ]);
-                supportArticles = faq.articles || [];
-                supportTickets = tickets.tickets || [];
-                renderSupportFaq(supportArticles);
-                renderSupportTickets();
-                const categories = faq.categories || [];
-                $("supportCategory").innerHTML = categories.map(category => `<option>${escapeHTML(category)}</option>`).join("");
-                $("adminCategoryFilter").innerHTML = `<option value="">Toutes les catégories</option>` + categories.map(category => `<option>${escapeHTML(category)}</option>`).join("");
-                $("supportBadge").style.display = "none";
-            }catch(error){ console.error(error); }
-        }
-
-        function renderSupportFaq(articles){
-            $("supportCategories").innerHTML = [...new Set(articles.map(article => article.category))]
-                .map(category => `<div class="support-card" onclick="filterSupport('${escapeHTML(category)}')"><strong>${escapeHTML(category)}</strong><div class="support-meta">Centre d'aide NOVA</div></div>`).join("");
-            $("supportFaq").innerHTML = articles.map(article =>
-                `<div class="support-card" style="margin:10px 0"><strong>${escapeHTML(article.title)}</strong><div class="support-meta">${escapeHTML(article.content)}</div></div>`
-            ).join("");
-        }
-
-        function filterSupport(category){
-            renderSupportFaq(supportArticles.filter(article => article.category === category));
-        }
-
-        async function searchSupport(){
-            const query = $("supportSearch").value.trim();
-            if(query.length < 2) return renderSupportFaq(supportArticles);
-            try{
-                const data = await supportRequest(`/api/support/search?q=${encodeURIComponent(query)}`);
-                renderSupportFaq(data.articles || []);
-            }catch(error){ showToast(error.message); }
-        }
-
-        function showSupportForm(){ $("supportForm").style.display = "block"; }
-
-        async function createSupportTicket(){
-            try{
-                const data = await supportRequest("/api/support/tickets", {
-                    method:"POST", headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify({
-                        category:$("supportCategory").value,
-                        subject:$("supportSubject").value,
-                        message:$("supportMessage").value
-                    })
-                });
-                $("supportSubject").value = "";
-                $("supportMessage").value = "";
-                $("supportForm").style.display = "none";
-                showToast(`Ticket ${data.ticket.id} créé.`);
-                await loadSupport();
-            }catch(error){ showToast(error.message); }
-        }
-
-        function renderSupportTickets(){
-            $("supportTickets").innerHTML = supportTickets.length ? supportTickets.map(ticket =>
-                `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}')"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.category)} · ${new Date(ticket.updatedAt).toLocaleString()}</div></div>`
-            ).join("") : `<p style="color:var(--muted);margin-top:12px">Aucun ticket.</p>`;
-        }
-
-        async function openSupportTicket(id, admin=false){
-            try{
-                const data = await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`);
-                const ticket = data.ticket;
-                const target = admin ? $("adminDetail") : $("supportDetail");
-                target.classList.add("active");
-                target.innerHTML = `<h3>${escapeHTML(ticket.subject)}</h3><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.status)}</div>
-                    <div style="margin:15px 0">${ticket.messages.map(message => `<div class="support-card"><strong>${escapeHTML(message.author)}</strong><div>${escapeHTML(message.body)}</div><div class="support-meta">${new Date(message.createdAt).toLocaleString()}</div></div>`).join("")}</div>
-                    <textarea class="support-form textarea" id="${admin ? "adminReply" : "supportReply"}" maxlength="4000" placeholder="Répondre..."></textarea>
-                    ${admin ? `<label style="display:block;color:var(--muted);margin:10px 0"><input type="checkbox" id="adminInternalNote"> Note interne</label>` : ""}
-                    <button class="btn" onclick="replySupportTicket('${ticket.id}',${admin})">${admin ? "Répondre / noter" : "Répondre"}</button>
-                    ${admin ? `<select class="support-search" id="adminTicketStatus"><option>Ouvert</option><option>En cours</option><option>En attente</option><option>Résolu</option><option>Fermé</option></select><button class="btn secondary" onclick="updateSupportStatus('${ticket.id}')">Changer le statut</button>` : ""}`;
-            }catch(error){ showToast(error.message); }
-        }
-
-        async function replySupportTicket(id, admin){
-            const input = $(admin ? "adminReply" : "supportReply");
-            try{
-                await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}/messages`, {
-                    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({body:input.value, internal:admin && $("adminInternalNote") && $("adminInternalNote").checked})
-                });
-                input.value = "";
-                await (admin ? loadAdminTickets() : loadSupport());
-                await openSupportTicket(id, admin);
-            }catch(error){ showToast(error.message); }
-        }
-
-        async function loadAdminTickets(){
-            if(!["support","admin"].includes(currentUser.role)) return;
-            try{
-                const data = await supportRequest("/api/support/tickets");
-                const status = $("adminStatusFilter").value;
-                const category = $("adminCategoryFilter").value;
-                const tickets = data.tickets.filter(ticket => (!status || ticket.status === status) && (!category || ticket.category === category));
-                $("adminTickets").innerHTML = tickets.map(ticket => `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}',true)"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.user)} · ${escapeHTML(ticket.category)}</div></div>`).join("");
-            }catch(error){ showToast(error.message); }
-        }
-
-        async function updateSupportStatus(id){
-            try{
-                await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`, {
-                    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:$("adminTicketStatus").value})
-                });
-                await loadAdminTickets();
-                await openSupportTicket(id,true);
-            }catch(error){ showToast(error.message); }
-        }
-
     }catch(error){
 
         console.error(error);
 
     }
 
+}
+
+/* =====================================================
+   CONTACTS DIRECTORY
+===================================================== */
+
+async function loadContactsDirectory(){
+    const container = $("contactsDirectory");
+    if(!container) return;
+    try {
+        const response = await fetch("/api/contacts");
+        const data = await response.json();
+        if(!response.ok || !data.success) throw new Error(data.error || "Impossible de charger les contacts.");
+        const contacts = data.contacts || [];
+        if(!contacts.length){
+            container.innerHTML = `<p style="color:var(--muted)">Aucun autre contact pour le moment.</p>`;
+            return;
+        }
+        container.innerHTML = contacts.map(c => `
+            <div class="support-ticket" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="avatar" style="width:38px;height:38px;font-size:14px;${c.avatar ? `background-image:url('${resolveMediaUrl(c.avatar)}');background-size:cover;` : ''}">${c.avatar ? "" : initials(c.username)}</div>
+                    <div>
+                        <strong>${escapeHTML(c.username)}</strong>
+                        <div class="support-meta">${onlineUsers.includes(c.username) ? "🟢 En ligne" : "⚫ Hors ligne"} · ${escapeHTML(c.role || "user")}</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn" style="padding:8px 14px;font-size:13px" onclick="openChat('${escapeHTML(c.username)}')">Message</button>
+                    <button class="btn secondary" style="padding:8px 14px;font-size:13px;margin:0" onclick="startCallWith('${escapeHTML(c.username)}')">Appeler</button>
+                </div>
+            </div>
+        `).join("");
+        renderCallQuickList(contacts);
+    } catch(err) {
+        container.innerHTML = `<p style="color:var(--muted)">Erreur : ${escapeHTML(err.message)}</p>`;
+    }
+}
+
+function renderCallQuickList(contactsList){
+    const container = $("callQuickList");
+    if(!container) return;
+    const available = onlineUsers.filter(u => currentUser && u !== currentUser.username);
+    if(!available.length){
+        container.innerHTML = `<p style="color:var(--muted)">Aucun contact en ligne actuellement.</p>`;
+        return;
+    }
+    container.innerHTML = available.map(u => `
+        <div class="support-ticket" style="display:flex;align-items:center;justify-content:space-between;padding:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:32px;height:32px;font-size:12px">${initials(u)}</div>
+                <span>${escapeHTML(u)}</span>
+            </div>
+            <button class="btn" style="padding:6px 12px;font-size:13px;max-width:110px" onclick="startCallWith('${escapeHTML(u)}')">📞 Appeler</button>
+        </div>
+    `).join("");
+}
+
+function startCallWith(username){
+    selectedUser = username;
+    openChat(username);
+    startCall();
+}
+
+/* =====================================================
+   SUPPORT & HELP CENTER
+===================================================== */
+
+async function supportRequest(url, options){
+    const response = await fetch(url, options);
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || "Support indisponible.");
+    return data;
+}
+
+async function loadSupport(){
+    try{
+        const [faq, tickets] = await Promise.all([
+            supportRequest("/api/support/faq"),
+            supportRequest("/api/support/tickets")
+        ]);
+        supportArticles = faq.articles || [];
+        supportTickets = tickets.tickets || [];
+        renderSupportFaq(supportArticles);
+        renderSupportTickets();
+        const categories = faq.categories || [];
+        $("supportCategory").innerHTML = categories.map(category => `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`).join("");
+        if($("adminCategoryFilter")) {
+            $("adminCategoryFilter").innerHTML = `<option value="">Toutes les catégories</option>` + categories.map(category => `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`).join("");
+        }
+        $("supportBadge").style.display = "none";
+    }catch(error){ console.error(error); }
+}
+
+function renderSupportFaq(articles){
+    const cats = [...new Set(articles.map(article => article.category))];
+    $("supportCategories").innerHTML = cats.map(category => `<div class="support-card" style="cursor:pointer" onclick="filterSupport('${escapeHTML(category)}')"><strong>${escapeHTML(category)}</strong><div class="support-meta">Centre d'aide NOVA</div></div>`).join("");
+    $("supportFaq").innerHTML = articles.map(article =>
+        `<div class="support-card" style="margin:10px 0"><strong>${escapeHTML(article.title)}</strong><div class="support-meta" style="margin-top:6px;white-space:pre-wrap">${escapeHTML(article.content)}</div></div>`
+    ).join("");
+}
+
+function filterSupport(category){
+    renderSupportFaq(supportArticles.filter(article => article.category === category));
+}
+
+async function searchSupport(){
+    const query = $("supportSearch").value.trim();
+    if(query.length < 2) return renderSupportFaq(supportArticles);
+    try{
+        const data = await supportRequest(`/api/support/search?q=${encodeURIComponent(query)}`);
+        renderSupportFaq(data.articles || []);
+    }catch(error){ showToast(error.message); }
+}
+
+function showSupportForm(){
+    const form = $("supportForm");
+    form.style.display = form.style.display === "none" ? "block" : "none";
+}
+
+async function createSupportTicket(){
+    const subject = $("supportSubject").value.trim();
+    const message = $("supportMessage").value.trim();
+    const category = $("supportCategory").value;
+    if(!subject || !message){
+        showToast("Remplis le sujet et la description.");
+        return;
+    }
+    try{
+        const data = await supportRequest("/api/support/tickets", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({ category, subject, message })
+        });
+        $("supportSubject").value = "";
+        $("supportMessage").value = "";
+        $("supportForm").style.display = "none";
+        showToast(`Ticket ${data.ticket.id} créé.`);
+        await loadSupport();
+    }catch(error){ showToast(error.message); }
+}
+
+function renderSupportTickets(){
+    $("supportTickets").innerHTML = supportTickets.length ? supportTickets.map(ticket =>
+        `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}')"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge" style="margin-left:8px">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.category)} · ${new Date(ticket.updatedAt).toLocaleString()}</div></div>`
+    ).join("") : `<p style="color:var(--muted);margin-top:12px">Aucun ticket.</p>`;
+}
+
+async function openSupportTicket(id, admin=false){
+    try{
+        const data = await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`);
+        const ticket = data.ticket;
+        const target = admin ? $("adminDetail") : $("supportDetail");
+        target.classList.add("active");
+        target.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h3>${escapeHTML(ticket.subject)}</h3>
+                <button class="btn secondary" style="max-width:100px;margin:0;padding:6px 12px;font-size:12px" onclick="closeSupportDetail(${admin})">✕ Fermer</button>
+            </div>
+            <div class="support-meta">${escapeHTML(ticket.id)} · Statut : <strong style="color:var(--cyan)">${escapeHTML(ticket.status)}</strong> · Auteur : ${escapeHTML(ticket.user)}</div>
+            <div style="margin:15px 0;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+                ${ticket.messages.map(message => `
+                    <div class="support-card" style="margin:0;border-left:3px solid ${message.author === currentUser.username ? 'var(--blue)' : 'var(--cyan)'}">
+                        <strong>${escapeHTML(message.author)} ${message.internal ? '<span class="badge" style="background:#ff5277">Note interne</span>' : ''}</strong>
+                        <div style="margin:6px 0;white-space:pre-wrap">${escapeHTML(message.body)}</div>
+                        <div class="support-meta">${new Date(message.createdAt).toLocaleString()}</div>
+                    </div>
+                `).join("")}
+            </div>
+            ${ticket.status === "Fermé" && !admin ? `<p style="color:var(--muted);font-style:italic">Ce ticket est fermé.</p>` : `
+                <textarea class="support-form textarea" id="${admin ? "adminReply" : "supportReply"}" maxlength="4000" placeholder="Répondre..."></textarea>
+                ${admin ? `<label style="display:block;color:var(--muted);margin:10px 0"><input type="checkbox" id="adminInternalNote"> Note interne (invisible par l'utilisateur)</label>` : ""}
+                <button class="btn" onclick="replySupportTicket('${ticket.id}',${admin})">${admin ? "Répondre / noter" : "Répondre"}</button>
+            `}
+            ${admin ? `
+                <div style="margin-top:16px;display:flex;gap:8px">
+                    <select class="support-search" id="adminTicketStatus" style="margin:0">
+                        <option ${ticket.status === 'Ouvert' ? 'selected' : ''}>Ouvert</option>
+                        <option ${ticket.status === 'En cours' ? 'selected' : ''}>En cours</option>
+                        <option ${ticket.status === 'En attente' ? 'selected' : ''}>En attente</option>
+                        <option ${ticket.status === 'Résolu' ? 'selected' : ''}>Résolu</option>
+                        <option ${ticket.status === 'Fermé' ? 'selected' : ''}>Fermé</option>
+                    </select>
+                    <button class="btn secondary" style="margin:0;white-space:nowrap" onclick="updateSupportStatus('${ticket.id}')">Changer le statut</button>
+                </div>
+            ` : ""}
+        `;
+    }catch(error){ showToast(error.message); }
+}
+
+function closeSupportDetail(admin=false){
+    const target = admin ? $("adminDetail") : $("supportDetail");
+    if(target) target.classList.remove("active");
+}
+
+async function replySupportTicket(id, admin){
+    const input = $(admin ? "adminReply" : "supportReply");
+    const body = input.value.trim();
+    if(!body) return showToast("Message vide.");
+    try{
+        await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}/messages`, {
+            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({body, internal:admin && $("adminInternalNote") && $("adminInternalNote").checked})
+        });
+        input.value = "";
+        await (admin ? loadAdminTickets() : loadSupport());
+        await openSupportTicket(id, admin);
+    }catch(error){ showToast(error.message); }
+}
+
+async function loadAdminTickets(){
+    if(!currentUser || !["support","admin"].includes(currentUser.role)) return;
+    try{
+        const data = await supportRequest("/api/support/tickets");
+        const status = $("adminStatusFilter") ? $("adminStatusFilter").value : "";
+        const category = $("adminCategoryFilter") ? $("adminCategoryFilter").value : "";
+        const tickets = (data.tickets || []).filter(ticket => (!status || ticket.status === status) && (!category || ticket.category === category));
+        $("adminTickets").innerHTML = tickets.length ? tickets.map(ticket => `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}',true)"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge" style="margin-left:8px">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.user)} · ${escapeHTML(ticket.category)}</div></div>`).join("") : `<p style="color:var(--muted)">Aucun ticket trouvé.</p>`;
+    }catch(error){ showToast(error.message); }
+}
+
+async function updateSupportStatus(id){
+    try{
+        await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`, {
+            method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:$("adminTicketStatus").value})
+        });
+        showToast("Statut mis à jour.");
+        await loadAdminTickets();
+        await openSupportTicket(id,true);
+    }catch(error){ showToast(error.message); }
 }
 
 
@@ -1800,6 +1979,7 @@ function openChat(username){
     $("chatUsername").textContent =
         username;
 
+    $("chatAvatar").style.backgroundImage = "";
     $("chatAvatar").textContent =
         initials(username);
 
@@ -1865,19 +2045,41 @@ function renderMessages(){
 
         if(message.type === "voice"){
 
+            if(selectedGroup && message.from !== currentUser.username){
+                const author = document.createElement("div");
+                author.style.fontSize = "11px";
+                author.style.color = "var(--cyan)";
+                author.style.fontWeight = "bold";
+                author.style.marginBottom = "3px";
+                author.textContent = message.from;
+                div.appendChild(author);
+            }
+
             const audio =
                 document.createElement("audio");
 
             audio.controls = true;
 
-            audio.src = message.audio;
+            audio.src = resolveMediaUrl(message.audio);
 
             div.appendChild(audio);
 
         }else{
 
-            div.textContent =
-                message.text;
+            if(selectedGroup && message.from !== currentUser.username){
+                const author = document.createElement("div");
+                author.style.fontSize = "11px";
+                author.style.color = "var(--cyan)";
+                author.style.fontWeight = "bold";
+                author.style.marginBottom = "3px";
+                author.textContent = message.from;
+                div.appendChild(author);
+            }
+
+            const bodyDiv = document.createElement("div");
+            bodyDiv.style.whiteSpace = "pre-wrap";
+            bodyDiv.textContent = message.text;
+            div.appendChild(bodyDiv);
 
         }
 
@@ -2313,6 +2515,13 @@ async function acceptCall(){
             )
         );
 
+        if(pendingIceCandidates.length > 0){
+            for(const cand of pendingIceCandidates){
+                await peerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(console.error);
+            }
+            pendingIceCandidates = [];
+        }
+
         const answer =
             await peerConnection.createAnswer();
 
@@ -2322,6 +2531,7 @@ async function acceptCall(){
 
         $("callState").textContent =
             "Appel connecté";
+        startCallTimer();
 
         socket.send(JSON.stringify({
 
@@ -2370,8 +2580,16 @@ async function receiveCallAnswer(data){
             )
         );
 
+        if(pendingIceCandidates.length > 0){
+            for(const cand of pendingIceCandidates){
+                await peerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(console.error);
+            }
+            pendingIceCandidates = [];
+        }
+
         $("callState").textContent =
             "Appel connecté";
+        startCallTimer();
 
     }catch(error){
 
@@ -2388,9 +2606,12 @@ async function receiveCallAnswer(data){
 
 async function receiveIce(data){
 
+    if(!data || !data.candidate) return;
+
     if(
         peerConnection &&
-        data.candidate
+        peerConnection.remoteDescription &&
+        peerConnection.remoteDescription.type
     ){
 
         try{
@@ -2407,8 +2628,22 @@ async function receiveIce(data){
 
         }
 
+    } else {
+        pendingIceCandidates.push(data.candidate);
     }
 
+}
+
+function startCallTimer(){
+    callStartedAt = Date.now();
+    clearInterval(callTimer);
+    callTimer = setInterval(()=>{
+        if(!callStartedAt) return;
+        const elapsed = Math.floor((Date.now() - callStartedAt) / 1000);
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+        const secs = String(elapsed % 60).padStart(2, "0");
+        $("callState").textContent = `En communication (${mins}:${secs})`;
+    }, 1000);
 }
 
 
@@ -2529,8 +2764,10 @@ function closeCall(){
     $("callOverlay")
         .classList.remove("active");
     pendingOffer = null;
+    pendingIceCandidates = [];
     callStartedAt = null;
     clearInterval(callTimer);
+    callTimer = null;
 
     currentCallUser = null;
 
@@ -2551,10 +2788,17 @@ function goTo(page,button){
     document.querySelectorAll(".page")
         .forEach(p=>p.classList.remove("active"));
 
-    $(page).classList.add("active");
+    const targetPage = $(page);
+    if(targetPage){
+        targetPage.classList.add("active");
+    }
 
     document.querySelectorAll(".nav button")
         .forEach(b=>b.classList.remove("active"));
+
+    if(!button){
+        button = document.querySelector(`.nav button[onclick*="'${page}'"]`);
+    }
 
     if(button){
         button.classList.add("active");
@@ -2565,20 +2809,61 @@ function goTo(page,button){
         messages:"Messages",
         calls:"Appels",
         contacts:"Contacts",
+        groups:"Groupes",
+        support:"Support",
+        admin:"Administration",
+        browser:"NOVA Browser",
         settings:"Réglages"
     };
 
     $("pageTitle").textContent =
         titles[page] || "NOVA";
+
     if(page === "support") loadSupport();
-    if(page === "admin" && ["support","admin"].includes(currentUser.role)) loadAdminTickets();
+    if(page === "admin" && currentUser && ["support","admin"].includes(currentUser.role)) loadAdminTickets();
     if(page === "groups") loadGroups();
+    if(page === "contacts") loadContactsDirectory();
+    if(page === "calls") renderCallQuickList();
+    if(page === "browser") {
+        updateBrowserClock();
+        if(!$("browserFrame").getAttribute("src")) openBrowserUrl($("browserAddress").value);
+    }
+    if(page === "settings" && currentUser) {
+        if(currentUser.avatar){
+            setAvatarImage($("settingsAvatarPreview"), currentUser.avatar);
+        } else if($("settingsAvatarPreview")){
+            $("settingsAvatarPreview").textContent = initials(currentUser.username);
+        }
+
+        let browserVpnEnabled = false;
+        let browserClockTimer = null;
+        function updateBrowserClock(){
+            if($("browserClock")) $("browserClock").textContent = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+            if(!browserClockTimer) browserClockTimer = setInterval(updateBrowserClock, 30000);
+        }
+        function toggleBrowserVpn(){
+            browserVpnEnabled = !browserVpnEnabled;
+            $("browserVpnState").textContent = browserVpnEnabled ? "Indicateur activé · aucun tunnel réseau réel" : "Désactivé · aucun VPN réel configuré";
+        }
+        function openBrowserUrl(value){
+            let url;
+            try { url = new URL(value.includes("://") ? value : `https://${value}`); }
+            catch(error){ showToast("Adresse web invalide."); return; }
+            if(!["http:","https:"].includes(url.protocol)){ showToast("Seules les adresses HTTP(S) sont autorisées."); return; }
+            $("browserAddress").value = url.href;
+            $("browserFrame").src = url.href;
+        }
+        function browserBack(){ $("browserFrame").contentWindow.history.back(); }
+        function browserForward(){ $("browserFrame").contentWindow.history.forward(); }
+        function browserReload(){ $("browserFrame").contentWindow.location.reload(); }
+    }
 
 }
 
 function setAvatarImage(element, url){
+    if(!element) return;
     element.textContent = "";
-    element.style.backgroundImage = `url("${url}")`;
+    element.style.backgroundImage = `url("${resolveMediaUrl(url)}")`;
     element.style.backgroundSize = "cover";
     element.style.backgroundPosition = "center";
 }
@@ -2594,6 +2879,7 @@ async function uploadAvatar(event){
         if(!response.ok || !data.success) throw new Error(data.error || "Avatar impossible.");
         currentUser = data.user;
         setAvatarImage($("miniAvatar"), currentUser.avatar);
+        setAvatarImage($("settingsAvatarPreview"), currentUser.avatar);
         showToast("Photo de profil mise à jour.");
     } catch(error) {
         showToast(error.message);
@@ -2606,7 +2892,7 @@ async function loadGroups(){
         const response = await fetch("/api/groups");
         const data = await response.json();
         $("groupList").innerHTML = (data.groups || []).map(group =>
-            `<button class="support-ticket" onclick="openGroup('${escapeHTML(group.id)}')"><strong>${escapeHTML(group.name)}</strong><div class="support-meta">${group.members.length} membres</div></button>`
+            `<button class="support-ticket" style="width:100%;text-align:left;display:block" onclick="openGroup('${escapeHTML(group.id)}', '${escapeHTML(group.name)}', ${group.members.length})"><strong>👥 ${escapeHTML(group.name)}</strong><div class="support-meta">${group.members.length} membres</div></button>`
         ).join("") || `<p style="color:var(--muted)">Aucun groupe.</p>`;
     } catch(error) {
         console.error(error);
@@ -2629,16 +2915,18 @@ async function createGroup(){
     }
 }
 
-async function openGroup(id){
+async function openGroup(id, name, memberCount){
     const response = await fetch(`/api/groups/${encodeURIComponent(id)}/messages`);
     const data = await response.json();
     if(!response.ok) return showToast(data.error || "Groupe indisponible.");
-    selectedGroup = { id };
+    selectedGroup = { id, name: name || "Groupe" };
     selectedUser = null;
     allMessages = allMessages.filter(message => !message.groupId).concat(data.messages || []);
     goTo("messages");
-    $("chatUsername").textContent = "Groupe NOVA";
-    $("chatStatus").textContent = "Conversation de groupe";
+    $("chatUsername").textContent = name || "Groupe NOVA";
+    $("chatStatus").textContent = memberCount ? `${memberCount} membres` : "Conversation de groupe";
+    $("chatAvatar").style.backgroundImage = "";
+    $("chatAvatar").textContent = "👥";
     renderMessages();
 }
 
@@ -2660,6 +2948,7 @@ function logout(){
     closeCall();
 
     currentUser = null;
+    localStorage.removeItem("nova_token");
     fetch("/api/logout", { method: "POST" }).catch(console.error);
 
     $("app").classList.remove("active");
@@ -2697,10 +2986,14 @@ restoreSession();
 async function restoreSession(){
     try{
         const response = await fetch("/api/session");
-        if(!response.ok) return;
+        if(!response.ok) {
+            localStorage.removeItem("nova_token");
+            return;
+        }
         const data = await response.json();
         if(data.success){
             currentUser = data.user;
+            if(data.token) localStorage.setItem("nova_token", data.token);
             enterApp();
         }
     }catch(error){

@@ -72,6 +72,8 @@ npm run tauri:build
 ```
 
 Installers are written to `src-tauri/target/release/bundle/`.
+Windows builds require Visual Studio Build Tools with the MSVC C++ workload and
+Windows SDK.
 
 ## Android APK
 
@@ -86,6 +88,14 @@ npm run tauri:android:build
 The APK is generated under `src-tauri/gen/android/app/build/outputs/apk/`.
 Install Android Studio, the Android SDK, NDK and Java 17 before running these
 commands. The mobile client uses the same remote HTTPS API and WSS backend.
+
+## NOVA Browser
+
+The shared frontend includes a lightweight browser workspace with an address
+bar, navigation controls, shortcuts, clock and widgets. Its VPN control is
+only a local status indicator; it does not create a VPN tunnel or provide
+anonymity. A real VPN requires a configured provider and a platform-specific
+WireGuard/OpenVPN implementation.
 
 ## Roles and environment
 
