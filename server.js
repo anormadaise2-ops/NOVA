@@ -84,6 +84,39 @@ applyConfiguredRoles();
 
 app.use(express.json({ limit: "5mb" }));
 
+function publicOrigin(req) {
+    const configured = process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim();
+    if (configured) return configured.replace(/\/+$/, "");
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.headers["x-forwarded-host"] || req.get("host");
+    return `${protocol}://${host}`;
+}
+
+app.get("/", (req, res) => {
+    const indexFile = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
+    res.type("html").send(indexFile.replaceAll("__NOVA_PUBLIC_URL__", publicOrigin(req)));
+});
+
+app.get("/robots.txt", (req, res) => {
+    const origin = publicOrigin(req);
+    res.type("text/plain").send(`User-agent: *
+Allow: /
+
+Sitemap: ${origin}/sitemap.xml
+`);
+});
+
+app.get("/sitemap.xml", (req, res) => {
+    const origin = publicOrigin(req);
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${origin}/</loc>
+  </url>
+</urlset>
+`);
+});
+
 const upload = multer({
     storage: multer.diskStorage({
         destination: VOICES_DIR,

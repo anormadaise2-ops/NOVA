@@ -28,6 +28,22 @@ In Render choose **New + → Blueprint**, select
 such as `https://nova-xxxx.onrender.com`. A custom domain can be added from
 **Settings → Custom Domains**.
 
+## Cloudflare public access
+
+For a local public preview, with NOVA running on port 3000:
+
+```bash
+cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3000
+```
+
+Cloudflare prints the real `trycloudflare.com` URL. This Quick Tunnel is
+temporary and has no uptime guarantee. For production, authenticate with
+`cloudflared tunnel login`, create a named tunnel, attach a DNS hostname, and
+set `PUBLIC_URL` to that permanent HTTPS origin.
+
+The server generates `/robots.txt` and `/sitemap.xml` from the request origin
+or `PUBLIC_URL`, and injects the same origin into the homepage canonical URL.
+
 The free filesystem is not persistent. Move `data/database.json` and
 `data/voices/` to PostgreSQL/object storage for production.
 
