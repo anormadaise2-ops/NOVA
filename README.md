@@ -74,6 +74,14 @@ npm run tauri:build
 Installers are written to `src-tauri/target/release/bundle/`.
 Windows builds require Visual Studio Build Tools with the MSVC C++ workload and
 Windows SDK.
+The desktop wrapper reuses the same WebRTC call code as the web client. For a
+packaged desktop build, configure `PUBLIC_API_URL` to a reachable HTTPS NOVA
+backend so authentication, WebSocket signaling and calls do not point at the
+local `tauri://` origin.
+
+Calls require microphone permission, an authenticated WebSocket session and
+WebRTC ICE connectivity. NOVA includes Google STUN; difficult NATs may require
+an administrator-configured TURN server.
 
 ## Android APK
 

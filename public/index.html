@@ -2391,6 +2391,16 @@ async function createPeerConnection(target){
 
         };
 
+    peerConnection.onconnectionstatechange = ()=>{
+        const state = peerConnection.connectionState;
+        if(state === "connected"){
+            $("callState").textContent = "Appel connecté";
+            startCallTimer();
+        } else if(state === "failed" || state === "disconnected"){
+            $("callState").textContent = "Connexion audio interrompue";
+        }
+    };
+
     localStream =
         await navigator.mediaDevices.getUserMedia({
             audio:true,
@@ -2452,6 +2462,10 @@ async function startCall(){
             offer
         );
 
+        if(!socket || socket.readyState !== WebSocket.OPEN){
+            throw new Error("La connexion temps réel est indisponible.");
+        }
+
         socket.send(JSON.stringify({
 
             type:"call-offer",
@@ -2468,9 +2482,7 @@ async function startCall(){
 
         closeCall();
 
-        showToast(
-            "Impossible d'utiliser le microphone."
-        );
+        showToast(error instanceof Error ? error.message : "Impossible de démarrer l'appel.");
 
     }
 
@@ -2504,6 +2516,9 @@ async function acceptCall(){
     $("muteButton").style.display = "block";
 
     try{
+        if(!socket || socket.readyState !== WebSocket.OPEN){
+            throw new Error("La connexion temps réel est indisponible.");
+        }
 
         await createPeerConnection(
             data.from
@@ -2548,6 +2563,7 @@ async function acceptCall(){
         console.error(error);
 
         closeCall();
+        showToast(error instanceof Error ? error.message : "Impossible d'accepter l'appel.");
 
     }
 }
