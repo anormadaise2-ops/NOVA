@@ -44,6 +44,10 @@ set `PUBLIC_URL` to that permanent HTTPS origin.
 The server generates `/robots.txt` and `/sitemap.xml` from the request origin
 or `PUBLIC_URL`, and injects the same origin into the homepage canonical URL.
 
+The static frontend is also published through the GitHub Pages workflow at
+`https://anormadaise2-ops.github.io/NOVA/` when Pages is enabled in repository
+settings.
+
 The free filesystem is not persistent. Move `data/database.json` and
 `data/voices/` to PostgreSQL/object storage for production.
 
