@@ -1079,6 +1079,7 @@ const nativeFetch = window.fetch.bind(window);
 window.fetch = (input, init) => {
     if (typeof input === "string" && input.startsWith("/api/")) {
         input = `${NOVA_API_BASE}${input}`;
+        init = { credentials: "include", ...(init || {}) };
     }
     return nativeFetch(input, init);
 };
