@@ -97,9 +97,16 @@ function publicOrigin(req) {
     return `${protocol}://${host}`;
 }
 
+function apiOrigin(req) {
+    const configured = process.env.PUBLIC_API_URL && process.env.PUBLIC_API_URL.trim();
+    return (configured || publicOrigin(req)).replace(/\/+$/, "");
+}
+
 app.get("/", (req, res) => {
     const indexFile = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
-    res.type("html").send(indexFile.replaceAll("__NOVA_PUBLIC_URL__", publicOrigin(req)));
+    res.type("html").send(indexFile
+        .replaceAll("__NOVA_PUBLIC_URL__", publicOrigin(req))
+        .replaceAll("__NOVA_API_ORIGIN__", apiOrigin(req)));
 });
 
 app.get("/robots.txt", (req, res) => {

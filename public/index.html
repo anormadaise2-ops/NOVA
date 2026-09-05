@@ -1071,6 +1071,18 @@ onclick="endCall()">
 
 <script>
 
+const NOVA_API_ORIGIN = "__NOVA_API_ORIGIN__";
+const NOVA_API_BASE = NOVA_API_ORIGIN.startsWith("__")
+    ? window.location.origin
+    : NOVA_API_ORIGIN.replace(/\/+$/, "");
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (input, init) => {
+    if (typeof input === "string" && input.startsWith("/api/")) {
+        input = `${NOVA_API_BASE}${input}`;
+    }
+    return nativeFetch(input, init);
+};
+
 /* =====================================================
    NOVA CLIENT
 ===================================================== */
@@ -1334,14 +1346,15 @@ async function enterApp(){
 
 function connectWebSocket(){
 
+    const apiUrl = new URL(NOVA_API_BASE);
     const protocol =
-        location.protocol === "https:"
+        apiUrl.protocol === "https:"
             ? "wss:"
             : "ws:";
 
     socket =
         new WebSocket(
-            `${protocol}//${location.host}`
+            `${protocol}//${apiUrl.host}`
         );
 
     socket.addEventListener("open",()=>{
