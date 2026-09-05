@@ -69,6 +69,20 @@ npm run tauri:build
 
 Installers are written to `src-tauri/target/release/bundle/`.
 
+## Android APK
+
+The same NOVA frontend can be prepared for Android with Tauri:
+
+```bash
+npm run tauri:android:init
+npm run tauri:android:dev
+npm run tauri:android:build
+```
+
+The APK is generated under `src-tauri/gen/android/app/build/outputs/apk/`.
+Install Android Studio, the Android SDK, NDK and Java 17 before running these
+commands. The mobile client uses the same remote HTTPS API and WSS backend.
+
 ## Roles and environment
 
 Set support/admin users with:

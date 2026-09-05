@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "database.json");
 const VOICES_DIR = path.join(DATA_DIR, "voices");
+const AVATARS_DIR = path.join(DATA_DIR, "avatars");
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const sessions = new Map();
 
@@ -40,6 +41,9 @@ function applyConfiguredRoles() {
 
 if (!fs.existsSync(VOICES_DIR)) {
     fs.mkdirSync(VOICES_DIR, { recursive: true });
+}
+if (!fs.existsSync(AVATARS_DIR)) {
+    fs.mkdirSync(AVATARS_DIR, { recursive: true });
 }
 
 if (!fs.existsSync(DB_FILE)) {
@@ -79,6 +83,7 @@ db.supportTickets = Array.isArray(db.supportTickets) ? db.supportTickets : [];
 db.supportMessages = Array.isArray(db.supportMessages) ? db.supportMessages : [];
 db.notifications = Array.isArray(db.notifications) ? db.notifications : [];
 db.callHistory = Array.isArray(db.callHistory) ? db.callHistory : [];
+db.groups = Array.isArray(db.groups) ? db.groups : [];
 db.supportFaq = Array.isArray(db.supportFaq) ? db.supportFaq : defaultFaq();
 applyConfiguredRoles();
 
@@ -135,6 +140,15 @@ const upload = multer({
         ];
         callback(null, allowed.includes(file.mimetype));
     }
+});
+
+const avatarUpload = multer({
+    storage: multer.diskStorage({
+        destination: AVATARS_DIR,
+        filename: (req, file, callback) => callback(null, `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase() || ".bin"}`)
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, callback) => callback(null, ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.mimetype))
 });
 
 app.use(
@@ -405,6 +419,53 @@ app.get("/api/users/:username", (req, res) => {
 
 });
 
+app.post("/api/profile/avatar", avatarUpload.single("avatar"), (req, res) => {
+    if (!req.file) return res.status(400).json({ success: false, error: "Image invalide (JPG, PNG, WEBP ou GIF, 2 Mo maximum)." });
+    const user = db.users.find(item => item.username === req.username);
+    if (!user) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ success: false, error: "Utilisateur introuvable." });
+    }
+    if (user.avatar) {
+        const previous = path.join(AVATARS_DIR, path.basename(user.avatar));
+        if (fs.existsSync(previous)) fs.unlinkSync(previous);
+    }
+    user.avatar = `/avatars/${req.file.filename}`;
+    saveDatabase(db);
+    res.json({ success: true, user: publicUser(user) });
+});
+
+app.get("/api/groups", (req, res) => {
+    res.json({
+        success: true,
+        groups: db.groups.filter(group => group.members.includes(req.username)).map(group => ({
+            id: group.id, name: group.name, members: group.members, createdAt: group.createdAt
+        }))
+    });
+});
+
+app.post("/api/groups", (req, res) => {
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    const members = Array.isArray(req.body.members) ? req.body.members : [];
+    const uniqueMembers = [...new Set([req.username, ...members.filter(item => typeof item === "string").map(item => item.trim())])];
+    if (name.length < 2 || name.length > 80 || uniqueMembers.length < 2 || uniqueMembers.length > 50) {
+        return res.status(400).json({ success: false, error: "Nom ou membres du groupe invalides." });
+    }
+    if (uniqueMembers.some(member => !db.users.some(user => user.username === member))) {
+        return res.status(400).json({ success: false, error: "Un membre est introuvable." });
+    }
+    const group = { id: `group-${cryptoRandomId()}`, name, members: uniqueMembers, messages: [], createdAt: Date.now() };
+    db.groups.push(group);
+    saveDatabase(db);
+    res.status(201).json({ success: true, group: { id: group.id, name: group.name, members: group.members, createdAt: group.createdAt } });
+});
+
+app.get("/api/groups/:id/messages", (req, res) => {
+    const group = db.groups.find(item => item.id === req.params.id && item.members.includes(req.username));
+    if (!group) return res.status(404).json({ success: false, error: "Groupe introuvable." });
+    res.json({ success: true, messages: group.messages.slice(-200) });
+});
+
 const SUPPORT_CATEGORIES = [
     "Compte", "Connexion", "Mot de passe", "Messages", "Appels",
     "Notifications", "Sécurité", "Problème technique", "Bug", "Autre"
@@ -542,6 +603,7 @@ app.post("/api/voice", upload.single("audio"), (req, res) => {
 });
 
 app.use("/voices", express.static(VOICES_DIR, { fallthrough: false }));
+app.use("/avatars", express.static(AVATARS_DIR, { fallthrough: false }));
 
 /* =========================
    WEBSOCKET
@@ -601,6 +663,32 @@ wss.on("connection", (socket, request) => {
             return;
         }
 
+        /* VOICE MESSAGE */
+        if (data.type === "voice-message") {
+            if (!socket.user || !data.message || data.message.from !== socket.user) return;
+            const recipient = db.users.find(user => user.username === data.to);
+            if (!recipient || data.message.to !== recipient.username) return;
+            const receiver = onlineUsers.get(recipient.username);
+            if (receiver) send(receiver, { type: "voice-message", message: data.message });
+            send(socket, { type: "voice-message", message: data.message });
+            return;
+        }
+
+        /* GROUP MESSAGE */
+        if (data.type === "group-message") {
+            const group = db.groups.find(item => item.id === data.groupId && item.members.includes(socket.user));
+            const text = typeof data.text === "string" ? data.text.trim() : "";
+            if (!group || !text || text.length > 2000) return;
+            const message = { id: cryptoRandomId(), groupId: group.id, from: socket.user, text, date: Date.now() };
+            group.messages.push(message);
+            saveDatabase(db);
+            for (const member of group.members) {
+                const receiver = onlineUsers.get(member);
+                if (receiver) send(receiver, { type: "group-message", message });
+            }
+            return;
+        }
+
         /* MESSAGE */
 
         if (data.type === "message") {
@@ -620,16 +708,6 @@ wss.on("connection", (socket, request) => {
                     : "";
 
             if (!to || !text) {
-                return;
-            }
-
-            if (data.type === "voice-message") {
-                if (!socket.user || !data.message || data.message.from !== socket.user) return;
-                const recipient = db.users.find(user => user.username === data.to);
-                if (!recipient || data.message.to !== recipient.username) return;
-                const receiver = onlineUsers.get(recipient.username);
-                if (receiver) send(receiver, { type: "voice-message", message: data.message });
-                send(socket, { type: "voice-message", message: data.message });
                 return;
             }
 
@@ -787,7 +865,7 @@ server.listen(PORT, "0.0.0.0", () => {
 
 function publicUser(user) {
     if (!user) return null;
-    return { id: user.id, username: user.username, phone: user.phone, role: user.role || "user", createdAt: user.createdAt };
+    return { id: user.id, username: user.username, phone: user.phone, avatar: user.avatar || null, role: user.role || "user", createdAt: user.createdAt };
 }
 
 function isSupport(user) {

@@ -1,9 +1,19 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "mtnv8ycjmv53cilh",
+      "username": "karl",
+      "phone": "0780797844",
+      "role": "user",
+      "passwordHash": "$2b$12$1ZbFQr3vrz40HJIbgy61seo3HZusW5Ia79w2x/RrnMZ62NYkA6qQ.",
+      "createdAt": 1788581505763
+    }
+  ],
   "messages": [],
   "supportTickets": [],
   "supportMessages": [],
   "supportFaq": [],
   "notifications": [],
-  "callHistory": []
+  "callHistory": [],
+  "groups": []
 }

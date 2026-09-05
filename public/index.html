@@ -767,6 +767,7 @@ J'ai déjà un compte
 <button onclick="goTo('messages',this)">💬 Messages</button>
 <button onclick="goTo('calls',this)">📞 Appels</button>
 <button onclick="goTo('contacts',this)">👥 Contacts</button>
+<button onclick="goTo('groups',this)">👥 Groupes</button>
 <button onclick="goTo('support',this)">🛟 Support <span class="badge" id="supportBadge" style="display:none">0</span></button>
 <button onclick="goTo('admin',this)" id="adminNav" style="display:none">🛡️ Admin</button>
 <button onclick="goTo('settings',this)">⚙️ Réglages</button>
@@ -949,6 +950,15 @@ un utilisateur NOVA.
 
 </div>
 
+<div class="page" id="groups">
+<div class="card">
+    <h2>👥 Groupes NOVA</h2>
+    <p style="color:var(--muted);margin:8px 0 16px">Crée un groupe et discute avec plusieurs contacts.</p>
+    <button class="btn" onclick="createGroup()">Créer un groupe</button>
+    <div id="groupList" style="margin-top:18px"></div>
+</div>
+</div>
+
 <div class="page" id="support">
 <div class="card">
     <h2>NOVA HELP CENTER</h2>
@@ -999,6 +1009,10 @@ un utilisateur NOVA.
 onclick="logout()">
 Se déconnecter
 </button>
+<hr style="border-color:var(--line);margin:24px 0">
+<h3>Photo de profil</h3>
+<p style="color:var(--muted);margin:8px 0 12px">JPG, PNG, WEBP ou GIF, 2 Mo maximum.</p>
+<input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp,image/gif" onchange="uploadAvatar(event)">
 
 </div>
 
@@ -1067,6 +1081,7 @@ let currentUser =
 let socket = null;
 
 let selectedUser = null;
+let selectedGroup = null;
 
 let allMessages = [];
 
@@ -1086,6 +1101,8 @@ let recording = false;
 let pendingOffer = null;
 let callStartedAt = null;
 let callTimer = null;
+let ringtoneContext = null;
+let ringtoneTimer = null;
 let supportTickets = [];
 let supportArticles = [];
 
@@ -1295,6 +1312,7 @@ async function enterApp(){
 
     $("miniAvatar").textContent =
         initials(currentUser.username);
+    if (currentUser.avatar) setAvatarImage($("miniAvatar"), currentUser.avatar);
 
     $("homeUser").textContent =
         currentUser.username;
@@ -1305,6 +1323,7 @@ async function enterApp(){
 
     await loadMessages();
     await loadSupport();
+    await loadGroups();
 
 }
 
@@ -1405,6 +1424,12 @@ function handleSocketMessage(data){
 
             renderMessages();
 
+        }
+
+        if(data.type === "group-message"){
+            allMessages.push(data.message);
+            if(selectedGroup && data.message.groupId === selectedGroup.id) renderMessages();
+            return;
         }
 
         $("homeMessages").textContent =
@@ -1754,6 +1779,7 @@ async function loadMessages(){
 ===================================================== */
 
 function openChat(username){
+    selectedGroup = null;
 
     selectedUser = username;
 
@@ -1786,7 +1812,7 @@ function renderMessages(){
 
     list.innerHTML = "";
 
-    if(!selectedUser){
+    if(!selectedUser && !selectedGroup){
 
         list.innerHTML =
             `<p style="color:var(--muted)">
@@ -1796,8 +1822,9 @@ function renderMessages(){
         return;
     }
 
-    const messages =
-        allMessages.filter(message=>
+    const messages = selectedGroup
+        ? allMessages.filter(message => message.groupId === selectedGroup.id)
+        : allMessages.filter(message=>
             (
                 message.from === currentUser.username &&
                 message.to === selectedUser
@@ -1862,7 +1889,7 @@ function sendMessage(){
     const text =
         input.value.trim();
 
-    if(!text || !selectedUser){
+    if(!text || (!selectedUser && !selectedGroup)){
 
         return;
     }
@@ -1875,7 +1902,11 @@ function sendMessage(){
         return;
     }
 
-    socket.send(JSON.stringify({
+    socket.send(JSON.stringify(selectedGroup ? {
+        type:"group-message",
+        groupId:selectedGroup.id,
+        text
+    } : {
 
         type:"message",
 
@@ -2241,6 +2272,7 @@ async function receiveCall(data){
 
     pendingOffer = data;
     showCall(data.from, "Appel entrant...");
+    startRingtone();
     $("acceptCallButton").style.display = "block";
     $("rejectCallButton").style.display = "block";
     $("muteButton").style.display = "none";
@@ -2249,6 +2281,7 @@ async function receiveCall(data){
 async function acceptCall(){
     if(!pendingOffer) return;
     const data = pendingOffer;
+    stopRingtone();
     pendingOffer = null;
     $("acceptCallButton").style.display = "none";
     $("rejectCallButton").style.display = "none";
@@ -2296,6 +2329,7 @@ async function acceptCall(){
 }
 
 function rejectCall(){
+    stopRingtone();
     if (currentCallUser && socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "call-end", to: currentCallUser }));
     }
@@ -2385,6 +2419,33 @@ function showCall(username,state){
     $("muteButton").style.display = state === "Appel entrant..." ? "none" : "block";
 }
 
+function startRingtone(){
+    stopRingtone();
+    try {
+        ringtoneContext = new AudioContext();
+        const play = () => {
+            const oscillator = ringtoneContext.createOscillator();
+            const gain = ringtoneContext.createGain();
+            oscillator.frequency.value = 740;
+            gain.gain.value = 0.08;
+            oscillator.connect(gain).connect(ringtoneContext.destination);
+            oscillator.start();
+            oscillator.stop(ringtoneContext.currentTime + 0.22);
+        };
+        play();
+        ringtoneTimer = setInterval(play, 900);
+    } catch (error) {
+        console.error("Sonnerie indisponible.", error);
+    }
+}
+
+function stopRingtone(){
+    if (ringtoneTimer) clearInterval(ringtoneTimer);
+    ringtoneTimer = null;
+    if (ringtoneContext) ringtoneContext.close().catch(console.error);
+    ringtoneContext = null;
+}
+
 function toggleMute(){
 
     if(!localStream){
@@ -2429,6 +2490,7 @@ function endCall(){
 }
 
 function closeCall(){
+    stopRingtone();
 
     if(peerConnection){
 
@@ -2496,7 +2558,74 @@ function goTo(page,button){
         titles[page] || "NOVA";
     if(page === "support") loadSupport();
     if(page === "admin" && ["support","admin"].includes(currentUser.role)) loadAdminTickets();
+    if(page === "groups") loadGroups();
 
+}
+
+function setAvatarImage(element, url){
+    element.textContent = "";
+    element.style.backgroundImage = `url("${url}")`;
+    element.style.backgroundSize = "cover";
+    element.style.backgroundPosition = "center";
+}
+
+async function uploadAvatar(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    const form = new FormData();
+    form.append("avatar", file);
+    try {
+        const response = await fetch("/api/profile/avatar", { method:"POST", body:form });
+        const data = await response.json();
+        if(!response.ok || !data.success) throw new Error(data.error || "Avatar impossible.");
+        currentUser = data.user;
+        setAvatarImage($("miniAvatar"), currentUser.avatar);
+        showToast("Photo de profil mise à jour.");
+    } catch(error) {
+        showToast(error.message);
+    }
+}
+
+async function loadGroups(){
+    if(!currentUser || !$("groupList")) return;
+    try {
+        const response = await fetch("/api/groups");
+        const data = await response.json();
+        $("groupList").innerHTML = (data.groups || []).map(group =>
+            `<button class="support-ticket" onclick="openGroup('${escapeHTML(group.id)}')"><strong>${escapeHTML(group.name)}</strong><div class="support-meta">${group.members.length} membres</div></button>`
+        ).join("") || `<p style="color:var(--muted)">Aucun groupe.</p>`;
+    } catch(error) {
+        console.error(error);
+    }
+}
+
+async function createGroup(){
+    const name = prompt("Nom du groupe :");
+    if(!name) return;
+    const raw = prompt("Pseudos des membres séparés par des virgules :");
+    const members = (raw || "").split(",").map(item => item.trim()).filter(Boolean);
+    try {
+        const response = await fetch("/api/groups", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, members}) });
+        const data = await response.json();
+        if(!response.ok || !data.success) throw new Error(data.error || "Groupe impossible.");
+        showToast("Groupe créé.");
+        loadGroups();
+    } catch(error) {
+        showToast(error.message);
+    }
+}
+
+async function openGroup(id){
+    const response = await fetch(`/api/groups/${encodeURIComponent(id)}/messages`);
+    const data = await response.json();
+    if(!response.ok) return showToast(data.error || "Groupe indisponible.");
+    selectedGroup = { id };
+    selectedUser = null;
+    allMessages = allMessages.filter(message => !message.groupId).concat(data.messages || []);
+    goTo("messages");
+    $("chatUsername").textContent = "Groupe NOVA";
+    $("chatStatus").textContent = "Conversation de groupe";
+    renderMessages();
 }
 
 
