@@ -1,0 +1,26 @@
+{
+  "name": "nova",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "node --check server.js",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
+    "multer": "^2.3.0",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.2"
+  }
+}

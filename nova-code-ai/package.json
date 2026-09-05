@@ -1,0 +1,76 @@
+{
+  "name": "nova-code-ai",
+  "displayName": "NOVA Code AI",
+  "description": "Multi-provider AI assistance for VS Code with secure provider keys.",
+  "version": "0.1.0",
+  "publisher": "nova",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/anormadaise2-ops/NOVA" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other", "Machine Learning"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "nova.openChat", "title": "NOVA: Open Chat" },
+      { "command": "nova.explainCode", "title": "NOVA: Explain Code" },
+      { "command": "nova.fixError", "title": "NOVA: Fix Error" },
+      { "command": "nova.generateCode", "title": "NOVA: Generate Code" },
+      { "command": "nova.improveCode", "title": "NOVA: Improve Code" },
+      { "command": "nova.generateTests", "title": "NOVA: Generate Tests" },
+      { "command": "nova.explainProject", "title": "NOVA: Explain Project" },
+      { "command": "nova.analyzeProblems", "title": "NOVA: Analyze Problems" },
+      { "command": "nova.explainTerminalError", "title": "NOVA: Explain Terminal Error" },
+      { "command": "nova.manageProviders", "title": "NOVA: Manage AI Providers" },
+      { "command": "nova.selectProvider", "title": "NOVA: Select Provider" },
+      { "command": "nova.selectModel", "title": "NOVA: Select Model" },
+      { "command": "nova.checkConnection", "title": "NOVA: Check AI Connection" },
+      { "command": "nova.settings", "title": "NOVA: Settings" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "nova.openChat", "group": "nova@1", "when": "editorTextFocus" },
+        { "command": "nova.explainCode", "group": "nova@2", "when": "editorHasSelection" },
+        { "command": "nova.fixError", "group": "nova@3", "when": "editorHasSelection" },
+        { "command": "nova.improveCode", "group": "nova@4", "when": "editorHasSelection" },
+        { "command": "nova.generateTests", "group": "nova@5", "when": "editorTextFocus" }
+      ]
+    },
+    "configuration": {
+      "title": "NOVA Code AI",
+      "properties": {
+        "nova.activeProvider": { "type": "string", "description": "Active provider ID." },
+        "nova.activeModel": { "type": "string", "description": "Active model ID." },
+        "nova.beginnerMode": { "type": "boolean", "default": true },
+        "nova.developerMode": { "type": "boolean", "default": false },
+        "nova.streaming": { "type": "boolean", "default": true },
+        "nova.automaticContext": { "type": "boolean", "default": true },
+        "nova.contextLimit": { "type": "number", "default": 12000, "minimum": 1000, "maximum": 100000 },
+        "nova.automaticFallback": { "type": "boolean", "default": false },
+        "nova.ignoredFolders": { "type": "array", "default": ["node_modules", ".git", "dist", "build", ".env", ".env.*", "secrets", "credentials"] },
+        "nova.ollamaUrl": { "type": "string", "default": "http://127.0.0.1:11434" }
+        }
+      },
+      "viewsContainers": {
+        "activitybar": [
+          { "id": "nova", "title": "NOVA Code AI", "icon": "resources/nova.svg" }
+        ]
+      },
+      "views": {
+        "nova": [
+          { "type": "webview", "id": "nova.chat", "name": "Chat" }
+        ]
+      }
+  },
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.json",
+    "watch": "tsc -p ./tsconfig.json --watch",
+    "package": "npm run compile && vsce package"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.2",
+    "typescript": "^5.7.0"
+  }
+}

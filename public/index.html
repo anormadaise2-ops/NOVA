@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NOVA</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+:root{
+    --bg:#050713;
+    --panel:rgba(13,18,38,.78);
+    --panel2:rgba(20,28,55,.7);
+    --line:rgba(255,255,255,.1);
+    --text:#fff;
+    --muted:#8f9ab8;
+    --blue:#4f8cff;
+    --cyan:#25d9ff;
+    --green:#37e58c;
+    --danger:#ff5277;
+}
+
+body{
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:
+        radial-gradient(circle at 20% 20%,rgba(79,140,255,.18),transparent 30%),
+        radial-gradient(circle at 80% 70%,rgba(37,217,255,.12),transparent 30%),
+        var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    overflow:hidden;
+}
+
+/* BACKGROUND */
+
+.space{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+}
+
+.orb{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(70px);
+    opacity:.5;
+    animation:float 8s infinite ease-in-out;
+}
+
+.orb.one{
+    width:300px;
+    height:300px;
+    background:#315fff;
+    top:5%;
+    left:5%;
+}
+
+.orb.two{
+    width:250px;
+    height:250px;
+    background:#00d9ff;
+    right:5%;
+    bottom:10%;
+    animation-delay:2s;
+}
+
+@keyframes float{
+    0%,100%{transform:translate3d(0,0,0)}
+    50%{transform:translate3d(30px,-35px,0)}
+}
+
+/* AUTH */
+
+.auth{
+    position:relative;
+    z-index:5;
+    width:100%;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.phone{
+    width:390px;
+    min-height:650px;
+    padding:28px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:38px;
+    background:
+        linear-gradient(145deg,
+        rgba(255,255,255,.09),
+        rgba(255,255,255,.025));
+    backdrop-filter:blur(30px);
+    box-shadow:
+        0 40px 100px rgba(0,0,0,.6),
+        inset 0 0 40px rgba(255,255,255,.025);
+    transform:perspective(1000px) rotateY(-5deg);
+    animation:phoneFloat 5s infinite ease-in-out;
+}
+
+@keyframes phoneFloat{
+    0%,100%{transform:perspective(1000px) rotateY(-5deg) translateY(0)}
+    50%{transform:perspective(1000px) rotateY(5deg) translateY(-12px)}
+}
+
+.logo{
+    text-align:center;
+    font-size:45px;
+    font-weight:900;
+    letter-spacing:5px;
+    background:linear-gradient(90deg,#fff,#65a0ff,#37ddff);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin-bottom:5px;
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:28px;
+}
+
+.auth-box{
+    display:none;
+}
+
+.auth-box.active{
+    display:block;
+    animation:appear .35s ease;
+}
+
+@keyframes appear{
+    from{
+        opacity:0;
+        transform:translateY(15px) scale(.98)
+    }
+    to{
+        opacity:1;
+        transform:none
+    }
+}
+
+.field{
+    margin-bottom:15px;
+}
+
+.field label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:7px;
+}
+
+.field input{
+    width:100%;
+    padding:14px 15px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    outline:none;
+    background:rgba(0,0,0,.25);
+    color:white;
+    font-size:15px;
+}
+
+.field input:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 20px rgba(79,140,255,.15);
+}
+
+.btn{
+    width:100%;
+    border:0;
+    border-radius:15px;
+    padding:14px;
+    color:white;
+    font-weight:800;
+    cursor:pointer;
+    background:linear-gradient(135deg,#427cff,#21cfff);
+    box-shadow:0 10px 30px rgba(37,140,255,.25);
+    transition:.2s;
+}
+
+.btn:hover{
+    transform:translateY(-2px);
+}
+
+.btn.secondary{
+    background:rgba(255,255,255,.07);
+    box-shadow:none;
+    margin-top:10px;
+}
+
+.error{
+    color:#ff6b87;
+    font-size:13px;
+    min-height:20px;
+    margin:5px 0 10px;
+}
+
+.auth-links{
+    text-align:center;
+    margin-top:18px;
+}
+
+.auth-links button{
+    border:0;
+    background:none;
+    color:#62a0ff;
+    cursor:pointer;
+}
+
+/* APP */
+
+.app{
+    display:none;
+    width:100%;
+    height:100vh;
+    position:relative;
+    z-index:2;
+}
+
+.app.active{
+    display:flex;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+    width:240px;
+    padding:20px;
+    border-right:1px solid var(--line);
+    background:rgba(5,7,19,.72);
+    backdrop-filter:blur(25px);
+}
+
+.brand{
+    font-size:28px;
+    font-weight:900;
+    letter-spacing:3px;
+    margin-bottom:30px;
+}
+
+.nav{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.nav button{
+    padding:14px;
+    border:1px solid transparent;
+    border-radius:14px;
+    background:transparent;
+    color:#aeb8d2;
+    text-align:left;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.nav button:hover,
+.nav button.active{
+    background:rgba(79,140,255,.14);
+    color:white;
+    border-color:rgba(79,140,255,.2);
+}
+
+.profile-mini{
+    position:absolute;
+    bottom:20px;
+    width:200px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#437dff,#20d9ff);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:900;
+}
+
+/* MAIN */
+
+.main{
+    flex:1;
+    padding:25px;
+    overflow:auto;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.page-title{
+    font-size:30px;
+    font-weight:900;
+}
+
+.status{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--muted);
+}
+
+.dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#555;
+}
+
+.dot.online{
+    background:var(--green);
+    box-shadow:0 0 12px var(--green);
+}
+
+/* PAGES */
+
+.page{
+    display:none;
+}
+
+.page.active{
+    display:block;
+}
+
+/* CARDS */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+}
+
+.card{
+    padding:22px;
+    border:1px solid var(--line);
+    border-radius:20px;
+    background:var(--panel);
+    backdrop-filter:blur(20px);
+}
+
+.card .number{
+    font-size:30px;
+    font-weight:900;
+    margin-top:8px;
+}
+
+/* MESSAGES */
+
+.messages-layout{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    height:calc(100vh - 100px);
+    gap:15px;
+}
+
+.contacts,
+.chat{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:22px;
+    overflow:hidden;
+}
+
+.contacts{
+    padding:15px;
+}
+
+.search{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:rgba(0,0,0,.2);
+    color:white;
+    outline:none;
+    margin-bottom:12px;
+}
+
+.contact{
+    padding:12px;
+    border-radius:13px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.contact:hover{
+    background:rgba(255,255,255,.06);
+}
+
+.contact-info{
+    flex:1;
+}
+
+.contact-name{
+    font-weight:700;
+}
+
+.contact-status{
+    color:var(--muted);
+    font-size:12px;
+}
+
+.chat{
+    display:flex;
+    flex-direction:column;
+}
+
+.chat-header{
+    padding:17px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.chat-actions{
+    margin-left:auto;
+    display:flex;
+    gap:8px;
+}
+
+.icon-btn{
+    width:40px;
+    height:40px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:rgba(255,255,255,.05);
+    color:white;
+    cursor:pointer;
+}
+
+.message-list{
+    flex:1;
+    overflow:auto;
+    padding:20px;
+}
+
+.message{
+    max-width:70%;
+    padding:11px 14px;
+    border-radius:17px;
+    margin-bottom:9px;
+    line-height:1.4;
+    word-break:break-word;
+}
+
+.message.mine{
+    margin-left:auto;
+    background:linear-gradient(135deg,#427cff,#20bfff);
+}
+
+.message.theirs{
+    background:rgba(255,255,255,.08);
+}
+
+.message audio{
+    width:220px;
+    max-width:100%;
+}
+
+.composer{
+    display:flex;
+    gap:8px;
+    padding:12px;
+    border-top:1px solid var(--line);
+}
+
+.composer input{
+    flex:1;
+    border:1px solid var(--line);
+    background:rgba(0,0,0,.2);
+    color:white;
+    border-radius:13px;
+    padding:13px;
+    outline:none;
+}
+
+.send{
+    width:48px;
+    border:0;
+    border-radius:13px;
+    background:linear-gradient(135deg,#427cff,#20cfff);
+    color:white;
+    cursor:pointer;
+}
+
+/* CALL */
+
+.call-overlay{
+    position:fixed;
+    inset:0;
+    z-index:50;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    background:rgba(0,0,0,.7);
+    backdrop-filter:blur(15px);
+}
+
+.call-overlay.active{
+    display:flex;
+}
+
+.call-box{
+    width:340px;
+    padding:35px;
+    border-radius:30px;
+    text-align:center;
+    background:rgba(14,20,40,.95);
+    border:1px solid var(--line);
+    box-shadow:0 30px 100px rgba(0,0,0,.6);
+}
+
+.call-avatar{
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    margin:0 auto 20px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:30px;
+    font-weight:900;
+    background:linear-gradient(135deg,#437dff,#20d9ff);
+    animation:pulse 1.4s infinite;
+}
+
+@keyframes pulse{
+    50%{
+        transform:scale(1.08);
+        box-shadow:0 0 40px rgba(37,217,255,.35);
+    }
+}
+
+.call-buttons{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-top:25px;
+}
+
+.call-btn{
+    width:58px;
+    height:58px;
+    border-radius:50%;
+    border:0;
+    cursor:pointer;
+    color:white;
+    background:rgba(255,255,255,.1);
+}
+
+.call-btn.end{
+    background:#e83f62;
+}
+
+.call-btn.accept{
+    background:#27c985;
+}
+
+/* TOAST */
+
+.toast{
+    position:fixed;
+    z-index:100;
+    right:20px;
+    bottom:20px;
+    padding:14px 18px;
+    border-radius:14px;
+    background:rgba(15,20,40,.95);
+    border:1px solid var(--line);
+    transform:translateY(100px);
+    opacity:0;
+    transition:.3s;
+}
+
+.support-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+    margin:18px 0;
+}
+.support-card,.support-ticket{
+    padding:18px;
+    border:1px solid var(--line);
+    border-radius:18px;
+    background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.025));
+    transition:transform .2s ease,border-color .2s ease;
+}
+.support-card:hover,.support-ticket:hover{transform:translateY(-3px);border-color:var(--cyan)}
+.support-search,.support-form textarea,.support-form input,.support-form select{
+    width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;
+    background:rgba(0,0,0,.2);color:var(--text);margin:6px 0 12px;
+}
+.support-form textarea{min-height:110px;resize:vertical}
+.support-ticket{cursor:pointer;margin:10px 0}
+.support-meta{color:var(--muted);font-size:12px;margin-top:7px}
+.support-detail{display:none}.support-detail.active{display:block}
+.badge{display:inline-block;padding:4px 9px;border-radius:999px;background:rgba(37,217,255,.14);color:var(--cyan);font-size:12px}
+
+.toast.show{
+    transform:none;
+    opacity:1;
+}
+
+@media(max-width:850px){
+    .sidebar{
+        width:80px;
+        padding:10px;
+    }
+
+    .brand{
+        text-align:center;
+        font-size:20px;
+    }
+
+    .nav button{
+        font-size:0;
+        text-align:center;
+    }
+
+    .nav button:first-letter{
+        font-size:20px;
+    }
+
+    .profile-mini{
+        width:55px;
+    }
+
+    .profile-mini span{
+        display:none;
+    }
+
+    .cards{
+        grid-template-columns:1fr;
+    }
+
+    .messages-layout{
+        grid-template-columns:1fr;
+    }
+
+    .contacts{
+        display:none;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="space">
+    <div class="orb one"></div>
+    <div class="orb two"></div>
+</div>
+
+<!-- AUTH -->
+
+<section class="auth" id="auth">
+
+<div class="phone">
+
+<div class="logo">NOVA</div>
+<div class="subtitle">Connecte-toi au réseau.</div>
+
+<!-- LOGIN -->
+
+<div class="auth-box active" id="loginBox">
+
+<div class="field">
+<label>Pseudo ou téléphone</label>
+<input id="loginUser" autocomplete="username">
+</div>
+
+<div class="field">
+<label>Mot de passe</label>
+<input id="loginPassword" type="password" autocomplete="current-password">
+</div>
+
+<div class="error" id="loginError"></div>
+
+<button class="btn" onclick="login()">SE CONNECTER</button>
+
+<div class="auth-links">
+<button onclick="showAuth('registerBox')">
+Créer un compte
+</button>
+</div>
+
+</div>
+
+<!-- REGISTER -->
+
+<div class="auth-box" id="registerBox">
+
+<div class="field">
+<label>Pseudo</label>
+<input id="registerUsername" maxlength="24">
+</div>
+
+<div class="field">
+<label>Téléphone</label>
+<input id="registerPhone" placeholder="+33 6 00 00 00 00">
+</div>
+
+<div class="field">
+<label>Mot de passe</label>
+<input id="registerPassword" type="password">
+</div>
+
+<div class="field">
+<label>Confirmer</label>
+<input id="registerPassword2" type="password">
+</div>
+
+<div class="error" id="registerError"></div>
+
+<button class="btn" onclick="register()">CRÉER MON COMPTE</button>
+
+<div class="auth-links">
+<button onclick="showAuth('loginBox')">
+J'ai déjà un compte
+</button>
+</div>
+
+</div>
+
+</div>
+</section>
+
+<!-- APP -->
+
+<section class="app" id="app">
+
+<aside class="sidebar">
+
+<div class="brand">N</div>
+
+<nav class="nav">
+
+<button class="active" onclick="goTo('home',this)">🏠 Accueil</button>
+<button onclick="goTo('messages',this)">💬 Messages</button>
+<button onclick="goTo('calls',this)">📞 Appels</button>
+<button onclick="goTo('contacts',this)">👥 Contacts</button>
+<button onclick="goTo('support',this)">🛟 Support <span class="badge" id="supportBadge" style="display:none">0</span></button>
+<button onclick="goTo('admin',this)" id="adminNav" style="display:none">🛡️ Admin</button>
+<button onclick="goTo('settings',this)">⚙️ Réglages</button>
+
+</nav>
+
+<div class="profile-mini">
+<div class="avatar" id="miniAvatar">N</div>
+<span id="miniUsername">NOVA</span>
+</div>
+
+</aside>
+
+<main class="main">
+
+<div class="topbar">
+
+<div class="page-title" id="pageTitle">
+Accueil
+</div>
+
+<div class="status">
+<div class="dot" id="statusDot"></div>
+<span id="statusText">Connexion...</span>
+</div>
+
+</div>
+
+<!-- HOME -->
+
+<div class="page active" id="home">
+
+<div class="cards">
+
+<div class="card">
+<div>👤 Compte</div>
+<div class="number" id="homeUser">-</div>
+</div>
+
+<div class="card">
+<div>💬 Messages</div>
+<div class="number" id="homeMessages">0</div>
+</div>
+
+<div class="card">
+<div>🟢 Réseau</div>
+<div class="number">ONLINE</div>
+</div>
+
+</div>
+
+<br>
+
+<div class="card">
+
+<h2>Bienvenue sur NOVA</h2>
+
+<br>
+
+<p style="color:var(--muted)">
+Ton compte est maintenant connecté au backend NOVA.
+</p>
+
+<br>
+
+<button class="btn" style="max-width:220px"
+onclick="goTo('messages')">
+Ouvrir les messages
+</button>
+
+</div>
+
+</div>
+
+<!-- MESSAGES -->
+
+<div class="page" id="messages">
+
+<div class="messages-layout">
+
+<div class="contacts">
+
+<input
+class="search"
+id="userSearch"
+placeholder="Rechercher un pseudo..."
+onkeydown="searchUser(event)"
+>
+
+<div id="contactList"></div>
+
+</div>
+
+<div class="chat">
+
+<div class="chat-header">
+
+<div class="avatar" id="chatAvatar">?</div>
+
+<div>
+<div id="chatUsername">Sélectionne un contact</div>
+<div class="contact-status" id="chatStatus">Hors conversation</div>
+</div>
+
+<div class="chat-actions">
+
+<button class="icon-btn"
+onclick="startCall()"
+title="Appeler">
+📞
+</button>
+
+</div>
+
+</div>
+
+<div class="message-list" id="messageList"></div>
+
+<div class="composer">
+
+<button class="icon-btn"
+onclick="toggleRecording()"
+id="recordButton"
+title="Message vocal">
+🎙️
+</button>
+
+<input
+id="messageInput"
+placeholder="Écrire un message..."
+onkeydown="messageKey(event)"
+>
+
+<button class="send" onclick="sendMessage()">
+➤
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- CALLS -->
+
+<div class="page" id="calls">
+
+<div class="card">
+
+<h2>📞 Appels</h2>
+
+<br>
+
+<p style="color:var(--muted)">
+Les appels vocaux utilisent WebRTC pour transmettre
+l'audio directement entre les navigateurs lorsque la
+connexion le permet.
+</p>
+
+</div>
+
+</div>
+
+<!-- CONTACTS -->
+
+<div class="page" id="contacts">
+
+<div class="card">
+
+<h2>👥 Contacts</h2>
+
+<br>
+
+<p style="color:var(--muted)">
+Utilise la recherche dans Messages pour trouver
+un utilisateur NOVA.
+</p>
+
+</div>
+
+<div class="page" id="support">
+<div class="card">
+    <h2>NOVA HELP CENTER</h2>
+    <p style="color:var(--muted);margin:8px 0 16px">Trouve une solution ou contacte notre équipe.</p>
+    <input class="support-search" id="supportSearch" placeholder="Rechercher une solution..." oninput="searchSupport()">
+    <div class="support-grid" id="supportCategories"></div>
+    <div id="supportFaq"></div>
+    <button class="btn" onclick="showSupportForm()">Créer un ticket</button>
+    <div id="supportForm" class="support-form" style="display:none;margin-top:18px">
+        <select id="supportCategory"></select>
+        <input id="supportSubject" maxlength="120" placeholder="Sujet">
+        <textarea id="supportMessage" maxlength="4000" placeholder="Décris ton problème..."></textarea>
+        <button class="btn" onclick="createSupportTicket()">Envoyer le ticket</button>
+    </div>
+</div>
+<div class="card" style="margin-top:18px">
+    <h3>Mes tickets</h3>
+    <div id="supportTickets"></div>
+    <div id="supportDetail" class="support-detail"></div>
+</div>
+</div>
+
+<div class="page" id="admin">
+<div class="card">
+    <h2>🛡️ Support Admin</h2>
+    <div class="support-grid">
+        <select class="support-search" id="adminStatusFilter" onchange="loadAdminTickets()"><option value="">Tous les statuts</option><option>Ouvert</option><option>En cours</option><option>En attente</option><option>Résolu</option><option>Fermé</option></select>
+        <select class="support-search" id="adminCategoryFilter" onchange="loadAdminTickets()"><option value="">Toutes les catégories</option></select>
+    </div>
+    <div id="adminTickets"></div>
+    <div id="adminDetail" class="support-detail"></div>
+</div>
+</div>
+
+</div>
+
+<!-- SETTINGS -->
+
+<div class="page" id="settings">
+
+<div class="card">
+
+<h2>⚙️ Réglages</h2>
+
+<br>
+
+<button class="btn secondary"
+onclick="logout()">
+Se déconnecter
+</button>
+
+</div>
+
+</div>
+
+</main>
+
+</section>
+
+<!-- CALL OVERLAY -->
+
+<div class="call-overlay" id="callOverlay">
+
+<div class="call-box">
+
+<div class="call-avatar" id="callAvatar">
+N
+</div>
+
+<h2 id="callName">NOVA</h2>
+
+<p id="callState" style="color:var(--muted);margin-top:8px">
+Appel...
+</p>
+
+<div class="call-buttons">
+
+<button class="call-btn accept" onclick="acceptCall()" id="acceptCallButton">
+    ✅
+</button>
+
+<button class="call-btn end" onclick="rejectCall()" id="rejectCallButton">
+    ❌
+</button>
+
+<button class="call-btn"
+onclick="toggleMute()"
+id="muteButton">
+🎤
+</button>
+
+<button class="call-btn end"
+onclick="endCall()">
+📞
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<audio id="remoteAudio" autoplay></audio>
+
+<script>
+
+/* =====================================================
+   NOVA CLIENT
+===================================================== */
+
+let currentUser =
+    null;
+
+let socket = null;
+
+let selectedUser = null;
+
+let allMessages = [];
+
+let peerConnection = null;
+
+let localStream = null;
+
+let currentCallUser = null;
+
+let isMuted = false;
+
+let mediaRecorder = null;
+
+let recordedChunks = [];
+
+let recording = false;
+let pendingOffer = null;
+let callStartedAt = null;
+let callTimer = null;
+let supportTickets = [];
+let supportArticles = [];
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function $(id){
+    return document.getElementById(id);
+}
+
+function showToast(text){
+
+    const toast = $("toast");
+
+    toast.textContent = text;
+
+    toast.classList.add("show");
+
+    setTimeout(()=>{
+        toast.classList.remove("show");
+    },2500);
+}
+
+function showAuth(id){
+
+    document.querySelectorAll(".auth-box")
+        .forEach(box=>box.classList.remove("active"));
+
+    $(id).classList.add("active");
+
+}
+
+function initials(name){
+
+    return name
+        ? name.substring(0,1).toUpperCase()
+        : "?";
+
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+async function login(){
+
+    const user =
+        $("loginUser").value.trim();
+
+    const password =
+        $("loginPassword").value;
+
+    $("loginError").textContent = "";
+
+    if(!user || !password){
+
+        $("loginError").textContent =
+            "Remplis tous les champs.";
+
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch("/api/login",{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+                    user,
+                    password
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        if(!response.ok || !data.success){
+
+            $("loginError").textContent =
+                data.error || "Connexion impossible.";
+
+            return;
+        }
+
+        currentUser = data.user;
+
+        enterApp();
+
+    }catch(error){
+
+        console.error(error);
+
+        $("loginError").textContent =
+            "Impossible de contacter NOVA.";
+
+    }
+
+}
+
+
+/* =====================================================
+   REGISTER
+===================================================== */
+
+async function register(){
+
+    const username =
+        $("registerUsername").value.trim();
+
+    const phone =
+        $("registerPhone").value.trim();
+
+    const password =
+        $("registerPassword").value;
+
+    const password2 =
+        $("registerPassword2").value;
+
+    $("registerError").textContent = "";
+
+    if(!username || !phone || !password){
+
+        $("registerError").textContent =
+            "Remplis tous les champs.";
+
+        return;
+    }
+
+    if(password !== password2){
+
+        $("registerError").textContent =
+            "Les mots de passe ne correspondent pas.";
+
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch("/api/register",{
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+                    username,
+                    phone,
+                    password
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        if(!response.ok || !data.success){
+
+            $("registerError").textContent =
+                data.error || "Création impossible.";
+
+            return;
+        }
+
+        currentUser = data.user;
+
+        showToast("Compte NOVA créé.");
+
+        enterApp();
+
+    }catch(error){
+
+        console.error(error);
+
+        $("registerError").textContent =
+            "Impossible de contacter NOVA.";
+
+    }
+
+}
+
+
+/* =====================================================
+   ENTER APP
+===================================================== */
+
+async function enterApp(){
+
+    $("auth").style.display = "none";
+
+    $("app").classList.add("active");
+
+    $("miniUsername").textContent =
+        currentUser.username;
+
+    $("miniAvatar").textContent =
+        initials(currentUser.username);
+
+    $("homeUser").textContent =
+        currentUser.username;
+    $("adminNav").style.display =
+        ["support","admin"].includes(currentUser.role) ? "block" : "none";
+
+    connectWebSocket();
+
+    await loadMessages();
+    await loadSupport();
+
+}
+
+
+/* =====================================================
+   WEBSOCKET
+===================================================== */
+
+function connectWebSocket(){
+
+    const protocol =
+        location.protocol === "https:"
+            ? "wss:"
+            : "ws:";
+
+    socket =
+        new WebSocket(
+            `${protocol}//${location.host}`
+        );
+
+    socket.addEventListener("open",()=>{
+
+        $("statusDot").classList.add("online");
+
+        $("statusText").textContent =
+            "Connecté";
+
+        socket.send(JSON.stringify({
+
+            type:"identify",
+
+            username:currentUser.username
+
+        }));
+
+    });
+
+    socket.addEventListener("close",()=>{
+
+        $("statusDot").classList.remove("online");
+
+        $("statusText").textContent =
+            "Déconnecté";
+
+        setTimeout(()=>{
+
+            if(currentUser){
+
+                connectWebSocket();
+
+            }
+
+        },3000);
+
+    });
+
+    socket.addEventListener("message",event=>{
+
+        let data;
+
+        try{
+            data = JSON.parse(event.data);
+        }catch{
+            return;
+        }
+
+        handleSocketMessage(data);
+
+    });
+
+}
+
+
+/* =====================================================
+   SOCKET EVENTS
+===================================================== */
+
+function handleSocketMessage(data){
+
+    if(data.type === "presence"){
+
+        updatePresence(data.users || []);
+
+        return;
+    }
+
+    if(data.type === "message" || data.type === "voice-message"){
+
+        allMessages.push(data.message);
+
+        if(
+            selectedUser &&
+            (
+                data.message.from === selectedUser ||
+                data.message.to === selectedUser
+            )
+        ){
+
+            renderMessages();
+
+        }
+
+        $("homeMessages").textContent =
+            allMessages.length;
+
+        return;
+    }
+
+    if(data.type === "call-offer"){
+
+        receiveCall(data);
+
+        return;
+    }
+
+    if(data.type === "call-answer"){
+
+        receiveCallAnswer(data);
+
+        return;
+    }
+
+    if(data.type === "ice-candidate"){
+
+        receiveIce(data);
+
+        return;
+    }
+
+    if(data.type === "call-end"){
+
+        closeCall();
+
+        return;
+    }
+
+    if(data.type === "call-error"){
+
+        showToast(data.error || "Erreur d'appel.");
+
+    }
+
+    if(["support-ticket-created","support-message","support-status","support-notification"].includes(data.type)){
+        $("supportBadge").style.display = "inline-block";
+        $("supportBadge").textContent = "!";
+        if($("support").classList.contains("active")) loadSupport();
+        showToast("Nouvelle notification Support");
+    }
+
+}
+
+
+/* =====================================================
+   PRESENCE
+===================================================== */
+
+let onlineUsers = [];
+
+function updatePresence(users){
+
+    onlineUsers = users;
+
+    if(selectedUser){
+
+        $("chatStatus").textContent =
+            onlineUsers.includes(selectedUser)
+                ? "🟢 En ligne"
+                : "⚫ Hors ligne";
+
+    }
+
+    renderContacts();
+
+}
+
+function renderContacts(){
+
+    const list =
+        $("contactList");
+
+    list.innerHTML = "";
+
+    const users =
+        [...new Set(
+            allMessages.flatMap(message=>[
+                message.from,
+                message.to
+            ])
+        )]
+        .filter(user =>
+            user &&
+            user !== currentUser.username
+        );
+
+    users.forEach(username=>{
+
+        const div =
+            document.createElement("div");
+
+        div.className = "contact";
+
+        div.innerHTML = `
+
+            <div class="avatar">
+                ${initials(username)}
+            </div>
+
+            <div class="contact-info">
+
+                <div class="contact-name">
+                    ${escapeHTML(username)}
+                </div>
+
+                <div class="contact-status">
+                    ${
+                        onlineUsers.includes(username)
+                        ? "🟢 En ligne"
+                        : "⚫ Hors ligne"
+                    }
+                </div>
+
+            </div>
+        `;
+
+        div.onclick =
+            ()=>openChat(username);
+
+        list.appendChild(div);
+
+    });
+
+}
+
+
+/* =====================================================
+   SEARCH USER
+===================================================== */
+
+async function searchUser(event){
+
+    if(event.key !== "Enter"){
+        return;
+    }
+
+    const username =
+        $("userSearch").value.trim();
+
+    if(!username){
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/users/" +
+                encodeURIComponent(username)
+            );
+
+        const data =
+            await response.json();
+
+        if(!response.ok){
+
+            showToast(
+                data.error ||
+                "Utilisateur introuvable."
+            );
+
+            return;
+        }
+
+        openChat(data.user.username);
+
+    }catch{
+
+        showToast(
+            "Recherche impossible."
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   LOAD MESSAGES
+===================================================== */
+
+async function loadMessages(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/messages/" +
+                encodeURIComponent(
+                    currentUser.username
+                )
+            );
+
+        const data =
+            await response.json();
+
+        if(data.success){
+
+            allMessages =
+                data.messages || [];
+
+            $("homeMessages").textContent =
+                allMessages.length;
+
+            renderContacts();
+
+        }
+
+        async function supportRequest(url, options){
+            const response = await fetch(url, options);
+            const data = await response.json();
+            if(!response.ok) throw new Error(data.error || "Support indisponible.");
+            return data;
+        }
+
+        async function loadSupport(){
+            try{
+                const [faq, tickets] = await Promise.all([
+                    supportRequest("/api/support/faq"),
+                    supportRequest("/api/support/tickets")
+                ]);
+                supportArticles = faq.articles || [];
+                supportTickets = tickets.tickets || [];
+                renderSupportFaq(supportArticles);
+                renderSupportTickets();
+                const categories = faq.categories || [];
+                $("supportCategory").innerHTML = categories.map(category => `<option>${escapeHTML(category)}</option>`).join("");
+                $("adminCategoryFilter").innerHTML = `<option value="">Toutes les catégories</option>` + categories.map(category => `<option>${escapeHTML(category)}</option>`).join("");
+                $("supportBadge").style.display = "none";
+            }catch(error){ console.error(error); }
+        }
+
+        function renderSupportFaq(articles){
+            $("supportCategories").innerHTML = [...new Set(articles.map(article => article.category))]
+                .map(category => `<div class="support-card" onclick="filterSupport('${escapeHTML(category)}')"><strong>${escapeHTML(category)}</strong><div class="support-meta">Centre d'aide NOVA</div></div>`).join("");
+            $("supportFaq").innerHTML = articles.map(article =>
+                `<div class="support-card" style="margin:10px 0"><strong>${escapeHTML(article.title)}</strong><div class="support-meta">${escapeHTML(article.content)}</div></div>`
+            ).join("");
+        }
+
+        function filterSupport(category){
+            renderSupportFaq(supportArticles.filter(article => article.category === category));
+        }
+
+        async function searchSupport(){
+            const query = $("supportSearch").value.trim();
+            if(query.length < 2) return renderSupportFaq(supportArticles);
+            try{
+                const data = await supportRequest(`/api/support/search?q=${encodeURIComponent(query)}`);
+                renderSupportFaq(data.articles || []);
+            }catch(error){ showToast(error.message); }
+        }
+
+        function showSupportForm(){ $("supportForm").style.display = "block"; }
+
+        async function createSupportTicket(){
+            try{
+                const data = await supportRequest("/api/support/tickets", {
+                    method:"POST", headers:{"Content-Type":"application/json"},
+                    body:JSON.stringify({
+                        category:$("supportCategory").value,
+                        subject:$("supportSubject").value,
+                        message:$("supportMessage").value
+                    })
+                });
+                $("supportSubject").value = "";
+                $("supportMessage").value = "";
+                $("supportForm").style.display = "none";
+                showToast(`Ticket ${data.ticket.id} créé.`);
+                await loadSupport();
+            }catch(error){ showToast(error.message); }
+        }
+
+        function renderSupportTickets(){
+            $("supportTickets").innerHTML = supportTickets.length ? supportTickets.map(ticket =>
+                `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}')"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.category)} · ${new Date(ticket.updatedAt).toLocaleString()}</div></div>`
+            ).join("") : `<p style="color:var(--muted);margin-top:12px">Aucun ticket.</p>`;
+        }
+
+        async function openSupportTicket(id, admin=false){
+            try{
+                const data = await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`);
+                const ticket = data.ticket;
+                const target = admin ? $("adminDetail") : $("supportDetail");
+                target.classList.add("active");
+                target.innerHTML = `<h3>${escapeHTML(ticket.subject)}</h3><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.status)}</div>
+                    <div style="margin:15px 0">${ticket.messages.map(message => `<div class="support-card"><strong>${escapeHTML(message.author)}</strong><div>${escapeHTML(message.body)}</div><div class="support-meta">${new Date(message.createdAt).toLocaleString()}</div></div>`).join("")}</div>
+                    <textarea class="support-form textarea" id="${admin ? "adminReply" : "supportReply"}" maxlength="4000" placeholder="Répondre..."></textarea>
+                    ${admin ? `<label style="display:block;color:var(--muted);margin:10px 0"><input type="checkbox" id="adminInternalNote"> Note interne</label>` : ""}
+                    <button class="btn" onclick="replySupportTicket('${ticket.id}',${admin})">${admin ? "Répondre / noter" : "Répondre"}</button>
+                    ${admin ? `<select class="support-search" id="adminTicketStatus"><option>Ouvert</option><option>En cours</option><option>En attente</option><option>Résolu</option><option>Fermé</option></select><button class="btn secondary" onclick="updateSupportStatus('${ticket.id}')">Changer le statut</button>` : ""}`;
+            }catch(error){ showToast(error.message); }
+        }
+
+        async function replySupportTicket(id, admin){
+            const input = $(admin ? "adminReply" : "supportReply");
+            try{
+                await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}/messages`, {
+                    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({body:input.value, internal:admin && $("adminInternalNote") && $("adminInternalNote").checked})
+                });
+                input.value = "";
+                await (admin ? loadAdminTickets() : loadSupport());
+                await openSupportTicket(id, admin);
+            }catch(error){ showToast(error.message); }
+        }
+
+        async function loadAdminTickets(){
+            if(!["support","admin"].includes(currentUser.role)) return;
+            try{
+                const data = await supportRequest("/api/support/tickets");
+                const status = $("adminStatusFilter").value;
+                const category = $("adminCategoryFilter").value;
+                const tickets = data.tickets.filter(ticket => (!status || ticket.status === status) && (!category || ticket.category === category));
+                $("adminTickets").innerHTML = tickets.map(ticket => `<div class="support-ticket" onclick="openSupportTicket('${ticket.id}',true)"><strong>${escapeHTML(ticket.subject)}</strong><span class="badge">${escapeHTML(ticket.status)}</span><div class="support-meta">${escapeHTML(ticket.id)} · ${escapeHTML(ticket.user)} · ${escapeHTML(ticket.category)}</div></div>`).join("");
+            }catch(error){ showToast(error.message); }
+        }
+
+        async function updateSupportStatus(id){
+            try{
+                await supportRequest(`/api/support/tickets/${encodeURIComponent(id)}`, {
+                    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:$("adminTicketStatus").value})
+                });
+                await loadAdminTickets();
+                await openSupportTicket(id,true);
+            }catch(error){ showToast(error.message); }
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+/* =====================================================
+   OPEN CHAT
+===================================================== */
+
+function openChat(username){
+
+    selectedUser = username;
+
+    $("chatUsername").textContent =
+        username;
+
+    $("chatAvatar").textContent =
+        initials(username);
+
+    $("chatStatus").textContent =
+        onlineUsers.includes(username)
+        ? "🟢 En ligne"
+        : "⚫ Hors ligne";
+
+    renderMessages();
+
+    goTo("messages");
+
+}
+
+
+/* =====================================================
+   RENDER
+===================================================== */
+
+function renderMessages(){
+
+    const list =
+        $("messageList");
+
+    list.innerHTML = "";
+
+    if(!selectedUser){
+
+        list.innerHTML =
+            `<p style="color:var(--muted)">
+                Sélectionne un contact.
+            </p>`;
+
+        return;
+    }
+
+    const messages =
+        allMessages.filter(message=>
+            (
+                message.from === currentUser.username &&
+                message.to === selectedUser
+            )
+            ||
+            (
+                message.from === selectedUser &&
+                message.to === currentUser.username
+            )
+        );
+
+    messages.forEach(message=>{
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "message " +
+            (
+                message.from === currentUser.username
+                    ? "mine"
+                    : "theirs"
+            );
+
+        if(message.type === "voice"){
+
+            const audio =
+                document.createElement("audio");
+
+            audio.controls = true;
+
+            audio.src = message.audio;
+
+            div.appendChild(audio);
+
+        }else{
+
+            div.textContent =
+                message.text;
+
+        }
+
+        list.appendChild(div);
+
+    });
+
+    list.scrollTop =
+        list.scrollHeight;
+
+}
+
+
+/* =====================================================
+   SEND MESSAGE
+===================================================== */
+
+function sendMessage(){
+
+    const input =
+        $("messageInput");
+
+    const text =
+        input.value.trim();
+
+    if(!text || !selectedUser){
+
+        return;
+    }
+
+    if(!socket ||
+       socket.readyState !== WebSocket.OPEN){
+
+        showToast("Connexion NOVA indisponible.");
+
+        return;
+    }
+
+    socket.send(JSON.stringify({
+
+        type:"message",
+
+        to:selectedUser,
+
+        text
+
+    }));
+
+    input.value = "";
+
+}
+
+function messageKey(event){
+
+    if(
+        event.key === "Enter" &&
+        !event.shiftKey
+    ){
+
+        event.preventDefault();
+
+        sendMessage();
+
+    }
+
+}
+
+
+/* =====================================================
+   VOICE MESSAGE
+===================================================== */
+
+async function toggleRecording(){
+
+    if(recording){
+
+        stopRecording();
+
+        return;
+    }
+
+    if(!selectedUser){
+
+        showToast("Choisis d'abord un contact.");
+
+        return;
+    }
+
+    if(!navigator.mediaDevices ||
+       !navigator.mediaDevices.getUserMedia){
+
+        showToast(
+            "Le navigateur ne permet pas l'enregistrement."
+        );
+
+        return;
+    }
+
+    try{
+
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
+                audio:true
+            });
+
+        recordedChunks = [];
+
+        mediaRecorder =
+            new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable =
+            event=>{
+
+                if(event.data.size > 0){
+
+                    recordedChunks.push(
+                        event.data
+                    );
+
+                }
+
+            };
+
+        mediaRecorder.onstop =
+            async()=>{
+
+                stream
+                    .getTracks()
+                    .forEach(track=>track.stop());
+
+                const blob =
+                    new Blob(
+                        recordedChunks,
+                        {
+                            type:
+                            mediaRecorder.mimeType ||
+                            "audio/webm"
+                        }
+                    );
+
+                await uploadVoice(blob);
+
+            };
+
+        mediaRecorder.start();
+
+        recording = true;
+
+        $("recordButton").textContent =
+            "⏹️";
+
+        showToast("Enregistrement...");
+
+    }catch(error){
+
+        console.error(error);
+
+        showToast(
+            "Microphone refusé ou indisponible."
+        );
+
+    }
+
+}
+
+function stopRecording(){
+
+    if(
+        mediaRecorder &&
+        mediaRecorder.state !== "inactive"
+    ){
+
+        mediaRecorder.stop();
+
+    }
+
+    recording = false;
+
+    $("recordButton").textContent =
+        "🎙️";
+
+}
+
+async function uploadVoice(blob){
+
+    try{
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "audio",
+            blob,
+            "voice.webm"
+        );
+
+        formData.append(
+            "to",
+            selectedUser
+        );
+
+        formData.append(
+            "from",
+            currentUser.username
+        );
+
+        const response =
+            await fetch(
+                "/api/voice",
+                {
+                    method:"POST",
+                    body:formData
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if(!response.ok || !data.success){
+
+            showToast(
+                data.error ||
+                "Envoi vocal impossible."
+            );
+
+            return;
+        }
+
+        if(socket &&
+           socket.readyState === WebSocket.OPEN){
+
+            socket.send(JSON.stringify({
+
+                type:"voice-message",
+
+                to:selectedUser,
+
+                message:data.message
+
+            }));
+
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+        showToast(
+            "Erreur lors de l'envoi vocal."
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   WEBRTC
+===================================================== */
+
+const rtcConfig = {
+
+    iceServers:[
+        {
+            urls:"stun:stun.l.google.com:19302"
+        }
+    ]
+
+};
+
+
+async function createPeerConnection(target){
+
+    peerConnection =
+        new RTCPeerConnection(rtcConfig);
+
+    peerConnection.onicecandidate =
+        event=>{
+
+            if(
+                event.candidate &&
+                socket &&
+                socket.readyState === WebSocket.OPEN
+            ){
+
+                socket.send(JSON.stringify({
+
+                    type:"ice-candidate",
+
+                    to:target,
+
+                    candidate:event.candidate
+
+                }));
+
+            }
+
+        };
+
+    peerConnection.ontrack =
+        event=>{
+
+            $("remoteAudio").srcObject =
+                event.streams[0];
+
+        };
+
+    localStream =
+        await navigator.mediaDevices.getUserMedia({
+            audio:true,
+            video:false
+        });
+
+    localStream
+        .getTracks()
+        .forEach(track =>
+            peerConnection.addTrack(
+                track,
+                localStream
+            )
+        );
+
+}
+
+
+/* =====================================================
+   START CALL
+===================================================== */
+
+async function startCall(){
+
+    if(!selectedUser){
+
+        showToast("Choisis un contact.");
+
+        return;
+    }
+
+    if(
+        !onlineUsers.includes(selectedUser)
+    ){
+
+        showToast("Cet utilisateur est hors ligne.");
+
+        return;
+    }
+
+    try{
+
+        currentCallUser =
+            selectedUser;
+
+        showCall(
+            selectedUser,
+            "Appel en cours..."
+        );
+
+        await createPeerConnection(
+            selectedUser
+        );
+
+        const offer =
+            await peerConnection.createOffer();
+
+        await peerConnection.setLocalDescription(
+            offer
+        );
+
+        socket.send(JSON.stringify({
+
+            type:"call-offer",
+
+            to:selectedUser,
+
+            offer
+
+        }));
+
+    }catch(error){
+
+        console.error(error);
+
+        closeCall();
+
+        showToast(
+            "Impossible d'utiliser le microphone."
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   RECEIVE CALL
+===================================================== */
+
+async function receiveCall(data){
+
+    currentCallUser =
+        data.from;
+
+    pendingOffer = data;
+    showCall(data.from, "Appel entrant...");
+    $("acceptCallButton").style.display = "block";
+    $("rejectCallButton").style.display = "block";
+    $("muteButton").style.display = "none";
+}
+
+async function acceptCall(){
+    if(!pendingOffer) return;
+    const data = pendingOffer;
+    pendingOffer = null;
+    $("acceptCallButton").style.display = "none";
+    $("rejectCallButton").style.display = "none";
+    $("muteButton").style.display = "block";
+
+    try{
+
+        await createPeerConnection(
+            data.from
+        );
+
+        await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(
+                data.offer
+            )
+        );
+
+        const answer =
+            await peerConnection.createAnswer();
+
+        await peerConnection.setLocalDescription(
+            answer
+        );
+
+        $("callState").textContent =
+            "Appel connecté";
+
+        socket.send(JSON.stringify({
+
+            type:"call-answer",
+
+            to:data.from,
+
+            answer
+
+        }));
+
+    }catch(error){
+
+        console.error(error);
+
+        closeCall();
+
+    }
+}
+
+function rejectCall(){
+    if (currentCallUser && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "call-end", to: currentCallUser }));
+    }
+    pendingOffer = null;
+    closeCall();
+}
+
+
+/* =====================================================
+   ANSWER
+===================================================== */
+
+async function receiveCallAnswer(data){
+
+    if(!peerConnection){
+        return;
+    }
+
+    try{
+
+        await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(
+                data.answer
+            )
+        );
+
+        $("callState").textContent =
+            "Appel connecté";
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+/* =====================================================
+   ICE
+===================================================== */
+
+async function receiveIce(data){
+
+    if(
+        peerConnection &&
+        data.candidate
+    ){
+
+        try{
+
+            await peerConnection.addIceCandidate(
+                new RTCIceCandidate(
+                    data.candidate
+                )
+            );
+
+        }catch(error){
+
+            console.error(error);
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   CALL UI
+===================================================== */
+
+function showCall(username,state){
+
+    $("callName").textContent =
+        username;
+
+    $("callAvatar").textContent =
+        initials(username);
+
+    $("callState").textContent =
+        state;
+
+    $("callOverlay").classList.add("active");
+    $("acceptCallButton").style.display = state === "Appel entrant..." ? "block" : "none";
+    $("rejectCallButton").style.display = state === "Appel entrant..." ? "block" : "none";
+    $("muteButton").style.display = state === "Appel entrant..." ? "none" : "block";
+}
+
+function toggleMute(){
+
+    if(!localStream){
+        return;
+    }
+
+    isMuted = !isMuted;
+
+    localStream
+        .getAudioTracks()
+        .forEach(track=>{
+            track.enabled = !isMuted;
+        });
+
+    $("muteButton").textContent =
+        isMuted
+        ? "🔇"
+        : "🎤";
+
+}
+
+function endCall(){
+
+    if(
+        currentCallUser &&
+        socket &&
+        socket.readyState === WebSocket.OPEN
+    ){
+
+        socket.send(JSON.stringify({
+
+            type:"call-end",
+
+            to:currentCallUser
+
+        }));
+
+    }
+
+    closeCall();
+
+}
+
+function closeCall(){
+
+    if(peerConnection){
+
+        peerConnection.close();
+
+        peerConnection = null;
+
+    }
+
+    if(localStream){
+
+        localStream
+            .getTracks()
+            .forEach(track=>track.stop());
+
+        localStream = null;
+
+    }
+
+    $("remoteAudio").srcObject = null;
+
+    $("callOverlay")
+        .classList.remove("active");
+    pendingOffer = null;
+    callStartedAt = null;
+    clearInterval(callTimer);
+
+    currentCallUser = null;
+
+    isMuted = false;
+
+    $("muteButton").textContent =
+        "🎤";
+
+}
+
+
+/* =====================================================
+   NAVIGATION
+===================================================== */
+
+function goTo(page,button){
+
+    document.querySelectorAll(".page")
+        .forEach(p=>p.classList.remove("active"));
+
+    $(page).classList.add("active");
+
+    document.querySelectorAll(".nav button")
+        .forEach(b=>b.classList.remove("active"));
+
+    if(button){
+        button.classList.add("active");
+    }
+
+    const titles = {
+        home:"Accueil",
+        messages:"Messages",
+        calls:"Appels",
+        contacts:"Contacts",
+        settings:"Réglages"
+    };
+
+    $("pageTitle").textContent =
+        titles[page] || "NOVA";
+    if(page === "support") loadSupport();
+    if(page === "admin" && ["support","admin"].includes(currentUser.role)) loadAdminTickets();
+
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+function logout(){
+
+    if(socket){
+
+        socket.close();
+
+        socket = null;
+
+    }
+
+    closeCall();
+
+    currentUser = null;
+    fetch("/api/logout", { method: "POST" }).catch(console.error);
+
+    $("app").classList.remove("active");
+
+    $("auth").style.display =
+        "flex";
+
+    showAuth("loginBox");
+
+}
+
+
+/* =====================================================
+   SECURITY
+===================================================== */
+
+function escapeHTML(value){
+
+    return String(value)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+
+}
+
+
+/* =====================================================
+   AUTO LOGIN
+===================================================== */
+
+restoreSession();
+
+async function restoreSession(){
+    try{
+        const response = await fetch("/api/session");
+        if(!response.ok) return;
+        const data = await response.json();
+        if(data.success){
+            currentUser = data.user;
+            enterApp();
+        }
+    }catch(error){
+        console.error(error);
+    }
+}
+
+
+/* =====================================================
+   GLOBAL NOVA API
+===================================================== */
+
+window.nova = {
+
+    login,
+    register,
+    logout,
+    sendMessage,
+    startCall,
+    endCall,
+    goTo
+
+};
+
+</script>
+
+</body>
+</html>
